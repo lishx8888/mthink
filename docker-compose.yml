@@ -1,0 +1,15 @@
+version: '3'
+
+services:
+  app:
+    build: .
+    container_name: mthink
+    ports:
+      - "8000:8000"
+    restart: unless-stopped
+    networks:
+      - mindmap_network
+
+networks:
+  mindmap_network:
+    driver: bridge
