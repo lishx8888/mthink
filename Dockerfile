@@ -1,14 +1,12 @@
-# 使用Node.js作为基础镜像
-FROM node:18-alpine
+# 使用Nginx作为基础镜像（比Node.js更轻量级）
+FROM nginx:alpine
 
-# 设置工作目录
-WORKDIR /app
-
-# 复制项目文件
-COPY . .
+# 复制项目文件到Nginx的静态文件目录
+COPY index.html /usr/share/nginx/html/
+COPY script.js /usr/share/nginx/html/
+COPY style.css /usr/share/nginx/html/
 
 # 暴露端口
-EXPOSE 8000
+EXPOSE 80
 
-# 启动服务器
-CMD ["node", "server.js"]
+# Nginx默认会自动启动

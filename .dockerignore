@@ -1,0 +1,20 @@
+# Git相关文件
+.git
+.gitignore
+
+# 文档文件
+README.md
+项目策划.md
+DOCKER_DEPLOYMENT.md
+
+# 构建相关
+Dockerfile
+docker-compose.yml
+nginx.conf
+
+# GitHub Actions
+.github/
+
+# 操作系统文件
+.DS_Store
+Thumbs.db

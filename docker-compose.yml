@@ -5,7 +5,7 @@ services:
     build: .
     container_name: mthink
     ports:
-      - "8000:8000"
+      - "8000:80"
     restart: unless-stopped
     networks:
       - mindmap_network
