@@ -101,6 +101,9 @@ class MindMap {
         this.panStartY = 0;
         this.isCtrlPressed = false;
         
+        // 编辑状态跟踪
+        this.isEditingNode = false;
+        
         // 连接线和箭头的统一颜色
         this.connectionColor = '#000000'; // 默认黑色
         
@@ -1819,6 +1822,9 @@ class MindMap {
     editNodeText(node) {
         console.log('editNodeText called for node:', node.id, node.text);
         
+        // 设置编辑状态为true
+        this.isEditingNode = true;
+        
         const nodeGroup = document.getElementById(`node-${node.id}`);
         if (!nodeGroup) {
             console.error('Node group not found:', `node-${node.id}`);
@@ -1884,6 +1890,9 @@ class MindMap {
         
         // 清理函数
         const cleanup = () => {
+            // 设置编辑状态为false
+            this.isEditingNode = false;
+            
             // 恢复原始文本显示
             originalForeignObjects.forEach(fo => {
                 fo.style.display = '';
@@ -3631,7 +3640,12 @@ class MindMap {
             this.isCtrlPressed = e.ctrlKey || e.metaKey;
             
             // 检查是否按下了Delete键或Backspace键
-            if (e.key === 'Delete' || e.key === 'Backspace') {
+            if ((e.key === 'Delete' || e.key === 'Backspace')) {
+                // 如果正在编辑节点文本，不执行节点删除操作
+                if (this.isEditingNode) {
+                    return; // 让事件自然冒泡，由文本编辑框处理
+                }
+                
                 // 阻止默认行为，防止影响其他操作
                 e.preventDefault();
                 
