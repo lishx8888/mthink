@@ -3639,8 +3639,8 @@ class MindMap {
             // 更新Ctrl键状态
             this.isCtrlPressed = e.ctrlKey || e.metaKey;
             
-            // 检查是否按下了Delete键或Backspace键
-            if ((e.key === 'Delete' || e.key === 'Backspace')) {
+            // 只有Delete键能删除节点，Backspace键不能删除节点，防止误删
+            if (e.key === 'Delete') {
                 // 如果正在编辑节点文本，不执行节点删除操作
                 if (this.isEditingNode) {
                     return; // 让事件自然冒泡，由文本编辑框处理
