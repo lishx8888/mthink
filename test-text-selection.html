@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>文本选择测试</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        
+        #test-container {
+            width: 100%;
+            height: 500px;
+            border: 1px solid #ccc;
+            margin-bottom: 20px;
+            position: relative;
+        }
+        
+        svg {
+            width: 100%;
+            height: 100%;
+            background-color: #f9f9f9;
+        }
+        
+        textarea {
+            width: 100%;
+            height: 100%;
+            border: none;
+            background: transparent;
+            font-size: 16px;
+            font-family: Arial, sans-serif;
+            color: #333;
+            outline: none;
+            padding: 0;
+            resize: none;
+            overflow: hidden;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            line-height: 1.4;
+            cursor: text;
+            display: block;
+            vertical-align: top;
+            
+            /* 明确允许文本选择 */
+            user-select: text;
+            -webkit-user-select: text;
+            -moz-user-select: text;
+            -ms-user-select: text;
+        }
+        
+        .node-group {
+            cursor: move;
+        }
+        
+        .node-rect {
+            fill: #ffffff;
+            stroke: #000000;
+            stroke-width: 1;
+            rx: 25;
+            ry: 25;
+        }
+        
+        #log {
+            width: 100%;
+            height: 200px;
+            border: 1px solid #ccc;
+            overflow-y: scroll;
+            padding: 10px;
+            font-family: monospace;
+            background-color: #f0f0f0;
+        }
+    </style>
+</head>
+<body>
+    <h1>文本选择测试</h1>
+    <div id="test-container">
+        <svg id="test-svg">
+            <!-- 测试节点 -->
+            <g id="node-1" class="node-group">
+                <rect id="rect-1" class="node-rect" x="100" y="100" width="200" height="50"></rect>
+                <foreignObject id="fo-1" x="110" y="110" width="180" height="30">
+                    <div xmlns="http://www.w3.org/1999/xhtml">
+                        <div style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; user-select: none;">
+                            测试节点文本
+                        </div>
+                    </div>
+                </foreignObject>
+            </g>
+        </svg>
+    </div>
+    
+    <div>
+        <button id="test-button">测试按钮</button>
+        <button id="edit-button">进入编辑模式</button>
+        <button id="exit-button">退出编辑模式</button>
+    </div>
+    
+    <h2>事件日志</h2>
+    <div id="log"></div>
+    
+    <script>
+        // 日志函数
+        function log(message) {
+            const logDiv = document.getElementById('log');
+            const timestamp = new Date().toLocaleTimeString();
+            logDiv.innerHTML += `[${timestamp}] ${message}\n`;
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+        
+        // 获取元素
+        const svg = document.getElementById('test-svg');
+        const nodeGroup = document.getElementById('node-1');
+        const rect = document.getElementById('rect-1');
+        const foreignObject = document.getElementById('fo-1');
+        const testButton = document.getElementById('test-button');
+        const editButton = document.getElementById('edit-button');
+        const exitButton = document.getElementById('exit-button');
+        
+        // 编辑模式状态
+        let isEditingNode = false;
+        
+        // 保存原始foreignObject
+        let originalForeignObject = null;
+        let editForeignObject = null;
+        let textarea = null;
+        
+        // 添加事件监听器
+        svg.addEventListener('click', (e) => {
+            log(`SVG click: target=${e.target.tagName}, className=${e.target.className}`);
+        });
+        
+        nodeGroup.addEventListener('click', (e) => {
+            log(`Node group click: target=${e.target.tagName}, className=${e.target.className}`);
+            if (!isEditingNode) {
+                log('Node selected');
+            }
+        });
+        
+        rect.addEventListener('click', (e) => {
+            log(`Rect click: target=${e.target.tagName}, className=${e.target.className}`);
+        });
+        
+        foreignObject.addEventListener('click', (e) => {
+            log(`ForeignObject click: target=${e.target.tagName}, className=${e.target.className}`);
+        });
+        
+        testButton.addEventListener('click', () => {
+            log('Test button clicked');
+        });
+        
+        // 进入编辑模式
+        editButton.addEventListener('click', () => {
+            log('Entering edit mode');
+            isEditingNode = true;
+            
+            // 保存原始foreignObject
+            originalForeignObject = foreignObject;
+            originalForeignObject.style.display = 'none';
+            
+            // 创建编辑foreignObject
+            editForeignObject = document.createElementNS('http://www.w3.org/2000/svg', 'foreignObject');
+            editForeignObject.setAttribute('x', '110');
+            editForeignObject.setAttribute('y', '110');
+            editForeignObject.setAttribute('width', '180');
+            editForeignObject.setAttribute('height', '30');
+            editForeignObject.setAttribute('class', 'edit-foreign-object');
+            
+            // 创建textarea
+            textarea = document.createElement('textarea');
+            textarea.value = '测试节点文本';
+            
+            // 添加到foreignObject
+            editForeignObject.appendChild(textarea);
+            
+            // 添加到节点组
+            nodeGroup.appendChild(editForeignObject);
+            
+            // 聚焦textarea
+            setTimeout(() => {
+                try {
+                    textarea.focus();
+                    log('Textarea focused');
+                } catch (e) {
+                    log('Focus error: ' + e.message);
+                }
+            }, 100);
+            
+            // 添加textarea事件监听器
+            textarea.addEventListener('click', (e) => {
+                log(`Textarea click: target=${e.target.tagName}, className=${e.target.className}`);
+                e.stopPropagation();
+            });
+            
+            textarea.addEventListener('mousedown', (e) => {
+                log(`Textarea mousedown: target=${e.target.tagName}, className=${e.target.className}`);
+                e.stopPropagation();
+            });
+            
+            textarea.addEventListener('mouseup', (e) => {
+                log(`Textarea mouseup: target=${e.target.tagName}, className=${e.target.className}`);
+                log(`Selection: start=${textarea.selectionStart}, end=${textarea.selectionEnd}`);
+                e.stopPropagation();
+            });
+            
+            textarea.addEventListener('blur', () => {
+                log('Textarea blur');
+            });
+            
+            // 阻止节点组的事件冒泡
+            const preventBubble = (e) => {
+                log(`Preventing bubble for ${e.type}`);
+                e.stopPropagation();
+            };
+            
+            const eventsToPrevent = ['click', 'mousedown', 'mouseup', 'mousemove', 'dblclick'];
+            eventsToPrevent.forEach(event => {
+                nodeGroup.addEventListener(event, preventBubble, true);
+            });
+            
+            // 保存阻止冒泡函数
+            window.preventBubble = preventBubble;
+            window.eventsToPrevent = eventsToPrevent;
+        });
+        
+        // 退出编辑模式
+        exitButton.addEventListener('click', () => {
+            log('Exiting edit mode');
+            isEditingNode = false;
+            
+            // 恢复原始foreignObject
+            if (originalForeignObject) {
+                originalForeignObject.style.display = '';
+            }
+            
+            // 移除编辑foreignObject
+            if (editForeignObject && nodeGroup.contains(editForeignObject)) {
+                nodeGroup.removeChild(editForeignObject);
+            }
+            
+            // 移除阻止冒泡的事件监听器
+            if (window.preventBubble && window.eventsToPrevent) {
+                window.eventsToPrevent.forEach(event => {
+                    nodeGroup.removeEventListener(event, window.preventBubble, true);
+                });
+            }
+        });
+        
+        // 全局事件监听器
+        document.addEventListener('click', (e) => {
+            log(`Document click: target=${e.target.tagName}, className=${e.target.className}`);
+            
+            // 如果处于编辑模式，检查是否需要退出
+            if (isEditingNode && textarea) {
+                // 检查点击目标是否在textarea内部
+                if (e.target !== textarea && !textarea.contains(e.target)) {
+                    // 检查点击目标是否在节点组内部
+                    if (!nodeGroup.contains(e.target)) {
+                        log('Click outside node area, exiting edit mode');
+                        exitButton.click();
+                    }
+                }
+            }
+        });
+        
+        document.addEventListener('mousedown', (e) => {
+            log(`Document mousedown: target=${e.target.tagName}, className=${e.target.className}`);
+        });
+        
+        document.addEventListener('mouseup', (e) => {
+            log(`Document mouseup: target=${e.target.tagName}, className=${e.target.className}`);
+        });
+        
+        log('测试页面加载完成');
+    </script>
+</body>
+</html>

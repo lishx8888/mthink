@@ -113,8 +113,11 @@ class MindMap {
         this.thumbnailWidth = 0;
         this.thumbnailHeight = 0;
         
-        // 创建根节点
-        this.rootNode = this.createNode('中心节点', 400, 100);
+        // 创建根节点 - 根据屏幕尺寸设置不同的默认位置
+        const isMobile = window.innerWidth <= 768;
+        const defaultX = isMobile ? 200 : 400;
+        const defaultY = isMobile ? 150 : 100;
+        this.rootNode = this.createNode('', defaultX, defaultY);
         
         // 保存初始状态
         this.saveState();
@@ -125,10 +128,117 @@ class MindMap {
         this.startSelection = this.startSelection.bind(this);
         this.drag = this.drag.bind(this);
         this.stopDrag = this.stopDrag.bind(this);
+        this.touchDrag = this.touchDrag.bind(this);
+        this.stopTouchDrag = this.stopTouchDrag.bind(this);
         
         this.initEventListeners();
         this.initThumbnail();
+        this.initMobileLayout();
         this.render();
+    }
+    
+    // 初始化手机布局处理
+    initMobileLayout() {
+        // 检测是否为移动设备
+        this.isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        
+        if (this.isMobile) {
+            // 动态添加手机端的画布控制按钮
+            this.addMobileControls();
+            
+            // 监听窗口大小变化（键盘弹出/收起）
+            window.addEventListener('resize', () => {
+                this.adjustLayoutForKeyboard();
+            });
+            
+            // 监听输入框焦点事件（键盘弹出）
+            document.addEventListener('focusin', (e) => {
+                if (e.target.tagName === 'TEXTAREA' || e.target.tagName === 'INPUT') {
+                    this.keyboardVisible = true;
+                    setTimeout(() => {
+                        this.adjustLayoutForKeyboard();
+                    }, 100);
+                }
+            });
+            
+            // 监听输入框失焦事件（键盘收起）
+            document.addEventListener('focusout', () => {
+                setTimeout(() => {
+                    this.keyboardVisible = false;
+                    this.adjustLayoutForKeyboard();
+                }, 100);
+            });
+        }
+    }
+    
+    // 添加手机端的画布控制按钮
+    addMobileControls() {
+        const canvasContainer = document.querySelector('.canvas-container');
+        if (!canvasContainer) return;
+        
+        // 检查是否已经存在控制按钮
+        if (document.querySelector('.canvas-controls')) return;
+        
+        // 创建画布控制按钮容器
+        const controlsContainer = document.createElement('div');
+        controlsContainer.className = 'canvas-controls';
+        
+        // 创建保存按钮
+        const saveBtn = document.createElement('button');
+        saveBtn.id = 'mobileSaveMap';
+        saveBtn.className = 'panel-button';
+        saveBtn.textContent = '保存';
+        saveBtn.addEventListener('click', () => {
+            document.getElementById('saveMap').click();
+        });
+        
+        // 创建加载按钮
+        const loadBtn = document.createElement('button');
+        loadBtn.id = 'mobileLoadMap';
+        loadBtn.className = 'panel-button';
+        loadBtn.textContent = '加载';
+        loadBtn.addEventListener('click', () => {
+            document.getElementById('loadMap').click();
+        });
+        
+        // 添加按钮到容器
+        controlsContainer.appendChild(saveBtn);
+        controlsContainer.appendChild(loadBtn);
+        
+        // 将控制按钮添加到画布容器顶部
+        canvasContainer.insertBefore(controlsContainer, canvasContainer.firstChild);
+    }
+    
+    // 调整布局以适应键盘
+    adjustLayoutForKeyboard() {
+        if (!this.isMobile) return;
+        
+        const mainArea = document.querySelector('.main-area');
+        const canvasContainer = document.querySelector('.canvas-container');
+        const stylePanel = document.querySelector('.style-panel');
+        
+        if (!mainArea || !canvasContainer || !stylePanel) return;
+        
+        const windowHeight = window.innerHeight;
+        const viewportHeight = Math.max(document.documentElement.clientHeight, window.innerHeight || 0);
+        
+        // 判断键盘是否可见（窗口高度减少超过20%）
+        const keyboardVisible = windowHeight - viewportHeight > windowHeight * 0.2;
+        
+        if (keyboardVisible) {
+            // 键盘可见时，调整画布和样式面板高度
+            const keyboardHeight = windowHeight - viewportHeight;
+            const availableHeight = viewportHeight;
+            
+            // 画布占大部分空间
+            canvasContainer.style.height = `${availableHeight * 0.7}px`;
+            // 样式面板占剩余空间
+            stylePanel.style.height = `${availableHeight * 0.3}px`;
+        } else {
+            // 键盘不可见时，恢复默认布局
+            canvasContainer.style.height = '';
+            stylePanel.style.height = '';
+        }
     }
     
     createNode(text, x, y, parents = [], skipSaveState = false) {
@@ -723,12 +833,30 @@ class MindMap {
         // 计算新节点位置（在目标节点的左侧）
         // 根据节点实际尺寸计算合适的距离，保持美观
         const spacing = 50; // 节点之间的间距
+        const estimatedNodeHeight = 50; // 估计的新节点高度
         const estimatedNodeWidth = 100; // 估计的新节点宽度
-        const newX = targetNode.x - targetNode.width / 2 - spacing - estimatedNodeWidth / 2;
-        const newY = targetNode.y;
         
-        // 创建新节点
-        const newNode = this.createNode('父节点', newX, newY);
+        let newX, newY;
+        
+        if (targetNode.parents.length === 0) {
+            // 第一个父节点，放在目标节点左侧，距离为默认节点宽度的3倍
+            newX = targetNode.x - targetNode.width / 2 - estimatedNodeWidth * 3 - estimatedNodeWidth / 2;
+            newY = targetNode.y; // 与目标节点保持同一水平中心线
+        } else {
+            // 不是第一个父节点，找到最下方的父节点，在其下方添加
+            const bottommostParent = targetNode.parents.reduce((bottommost, parent) => {
+                const bottommostBounds = bottommost.getNodeBounds();
+                const parentBounds = parent.getNodeBounds();
+                return (parentBounds.bottom > bottommostBounds.bottom) ? parent : bottommost;
+            }, targetNode.parents[0]); // 提供初始值
+            
+            const bottommostBounds = bottommostParent.getNodeBounds();
+            newX = bottommostParent.x; // 与最下方父节点保持同一垂直线
+            newY = bottommostBounds.bottom + spacing + estimatedNodeHeight / 2;
+        }
+        
+        // 创建空节点
+        const newNode = this.createNode('', newX, newY);
         
         // 添加目标节点到新节点的子节点列表
         newNode.addChild(targetNode);
@@ -740,9 +868,6 @@ class MindMap {
         
         this.selectNode(newNode);
         this.render();
-        
-        // 自动编辑新节点
-        this.editNodeText(newNode);
     }
     
     getRootNodes() {
@@ -948,7 +1073,16 @@ class MindMap {
             nodeGroup.addEventListener('click', (e) => {
                 // 检查是否是双击后的第二次单击
                 if (!e.detail || e.detail < 2) {
-                    this.selectNode(node);
+                    // 如果处于编辑模式，不执行任何操作
+                    if (this.isEditingNode) {
+                        return;
+                    }
+                    
+                    // 检查点击目标是否是文本编辑区域
+                    const isTextArea = e.target.closest('textarea') || e.target.closest('.edit-foreign-object');
+                    if (!isTextArea) {
+                        this.selectNode(node);
+                    }
                 }
             });
             
@@ -960,13 +1094,36 @@ class MindMap {
                 this.editNodeText(node);
             }, true);
             
-            // 拖拽事件 - 确保不会影响双击
-            nodeGroup.addEventListener('mousedown', (e) => {
-                // 只有单击才触发拖拽
-                if (!e.detail || e.detail < 2) {
+            // 拖拽事件 - 确保不会影响双击和文本编辑
+        nodeGroup.addEventListener('mousedown', (e) => {
+            // 检查是否在编辑模式下
+            if (this.isEditingNode) {
+                // 如果是编辑模式，不触发拖拽，允许文本选择
+                // 阻止事件冒泡，确保不影响文本选择
+                e.stopPropagation();
+                return;
+            }
+            
+            // 只有单击才触发拖拽
+            if (!e.detail || e.detail < 2) {
+                // 检查点击目标是否是文本编辑区域
+                const isTextArea = e.target.closest('textarea') || e.target.closest('.edit-foreign-object');
+                if (!isTextArea) {
                     this.startDrag(e, node);
+                } else {
+                    // 如果点击的是文本编辑区域，阻止事件冒泡
+                    e.stopPropagation();
                 }
-            });
+            }
+        });
+        
+        // 移动设备触摸事件 - 确保不会影响双击
+        nodeGroup.addEventListener('touchstart', (e) => {
+            // 只有单指触摸才触发拖拽
+            if (e.touches.length === 1) {
+                this.startTouchDrag(e, node);
+            }
+        });
             
             // 添加到画布 - 调整顺序，确保按钮位于文本区域之上
             nodeGroup.appendChild(rect);
@@ -1169,6 +1326,11 @@ class MindMap {
     }
     
     startSelection(e) {
+        // 如果处于编辑模式，不执行框选
+        if (this.isEditingNode) {
+            return;
+        }
+        
         this.isSelecting = true;
         
         // 直接使用屏幕坐标，不进行复杂转换
@@ -1195,12 +1357,17 @@ class MindMap {
     }
     
     startDrag(e, node) {
+        // 安全检查：如果正在编辑节点，绝对不执行拖拽
+        if (this.isEditingNode) {
+            return;
+        }
+        
         this.isDragging = true;
         this.dragNode = node;
         this.dragStartX = e.clientX;
         this.dragStartY = e.clientY;
         
-        // 阻止浏览器默认行为，防止文本选择和拖动
+        // 阻止浏览器默认行为
         e.preventDefault();
         
         // 添加事件监听器（使用constructor中已绑定的方法）
@@ -1210,7 +1377,62 @@ class MindMap {
         e.stopPropagation();
     }
     
+    // 处理移动设备的触摸开始事件
+    startTouchDrag(e, node) {
+        this.isDragging = true;
+        this.dragNode = node;
+        this.dragStartX = e.touches[0].clientX;
+        this.dragStartY = e.touches[0].clientY;
+        
+        // 保存初始位置
+        this.dragStartNodeX = node.x;
+        this.dragStartNodeY = node.y;
+        
+        // 获取需要拖动的所有节点的DOM元素
+        this.draggedNodeElements = {};
+        if (this.selectedNodes.length > 1) {
+            this.selectedNodes.forEach(selectedNode => {
+                const nodeElement = document.getElementById(`node-${selectedNode.id}`);
+                if (nodeElement) {
+                    this.draggedNodeElements[selectedNode.id] = {
+                        element: nodeElement,
+                        startX: selectedNode.x,
+                        startY: selectedNode.y
+                    };
+                    // 添加will-change属性，优化浏览器渲染
+                    nodeElement.style.willChange = 'transform';
+                }
+            });
+        } else {
+            const nodeElement = document.getElementById(`node-${node.id}`);
+            if (nodeElement) {
+                this.draggedNodeElements[node.id] = {
+                    element: nodeElement,
+                    startX: node.x,
+                    startY: node.y
+                };
+                // 添加will-change属性，优化浏览器渲染
+                nodeElement.style.willChange = 'transform';
+            }
+        }
+        
+        // 阻止浏览器默认行为，防止页面滚动和缩放
+        e.preventDefault();
+        
+        // 添加触摸移动和结束事件监听器，明确指定passive: false以允许preventDefault()
+        document.addEventListener('touchmove', this.touchDrag, { passive: false });
+        document.addEventListener('touchend', this.stopTouchDrag, { passive: false });
+        document.addEventListener('touchcancel', this.stopTouchDrag, { passive: false });
+        
+        e.stopPropagation();
+    }
+    
     drag(e) {
+        // 如果处于编辑模式，不执行拖动
+        if (this.isEditingNode) {
+            return;
+        }
+        
         if (!this.isDragging || !this.dragNode) return;
         
         const deltaX = e.clientX - this.dragStartX;
@@ -1244,7 +1466,37 @@ class MindMap {
         this.render();
     }
     
+    // 处理移动设备的触摸移动事件
+    touchDrag(e) {
+        if (!this.isDragging || !this.dragNode || e.touches.length !== 1) return;
+        
+        // 计算当前触摸点相对于拖动起始点的总偏移量
+        const totalDeltaX = e.touches[0].clientX - this.dragStartX;
+        const totalDeltaY = e.touches[0].clientY - this.dragStartY;
+        
+        // 如果移动距离很小，不执行任何操作，减少不必要的计算
+        if (Math.abs(totalDeltaX) < 1 && Math.abs(totalDeltaY) < 1) {
+            return;
+        }
+        
+        // 使用transform进行临时位置更新，避免每次都重新渲染整个思维导图
+        Object.values(this.draggedNodeElements).forEach(draggedElement => {
+            const element = draggedElement.element;
+            
+            // 应用transform - 使用总偏移量
+            element.style.transform = `translate(${totalDeltaX}px, ${totalDeltaY}px)`;
+        });
+        
+        // 阻止浏览器默认行为，防止页面滚动
+        e.preventDefault();
+    }
+    
     selectionMove(e) {
+        // 如果处于编辑模式，不执行框选
+        if (this.isEditingNode) {
+            return;
+        }
+        
         if (!this.isSelecting || !this.selectionRect) return;
         
         // 直接使用屏幕坐标
@@ -1299,6 +1551,17 @@ class MindMap {
     }
     
     stopSelection() {
+        // 如果处于编辑模式，不执行任何操作
+        if (this.isEditingNode) {
+            // 清理事件监听器以避免内存泄漏
+            document.removeEventListener('mousemove', this.selectionMove);
+            document.removeEventListener('mouseup', this.stopSelection);
+            // 重置框选状态
+            this.isSelecting = false;
+            this.selectionRect = null;
+            return;
+        }
+        
         // 移除框选矩形
         if (this.selectionRect && this.canvas.contains(this.selectionRect)) {
             this.canvas.removeChild(this.selectionRect);
@@ -1430,6 +1693,127 @@ class MindMap {
         document.removeEventListener('mouseup', this.stopDrag);
     }
     
+    // 处理移动设备的触摸结束事件
+    stopTouchDrag(e) {
+        // 如果有正在拖拽的节点，尝试自动对齐和等间距调整
+        if (this.dragNode) {
+            // 计算总的偏移量
+            let totalDeltaX = 0;
+            let totalDeltaY = 0;
+            
+            // 在touchend事件中，使用changedTouches获取结束的触摸点
+            if (e && e.changedTouches && e.changedTouches.length > 0) {
+                const endX = e.changedTouches[0].clientX;
+                const endY = e.changedTouches[0].clientY;
+                totalDeltaX = endX - this.dragStartX;
+                totalDeltaY = endY - this.dragStartY;
+            }
+            
+            // 检测对齐和间距
+            this.alignmentGuides = this.detectAlignment(this.dragNode);
+            this.spacingGuides = this.detectEqualSpacing(this.dragNode);
+            
+            // 使用拖拽过程中已经检测到的对齐线和间距线，确保与显示的提示线一致
+            const alignmentGuides = this.alignmentGuides;
+            const spacingGuides = this.spacingGuides;
+            
+            // 计算新位置
+            let newX = this.dragStartNodeX + totalDeltaX;
+            let newY = this.dragStartNodeY + totalDeltaY;
+            let hasSpacingGuide = false;
+            
+            // 优先应用等间距调整
+            if (spacingGuides.length > 0) {
+                // 取第一个等间距位置
+                const spacingGuide = spacingGuides[0];
+                // 根据间距提示线类型更新相应的坐标
+                if (spacingGuide.type === 'horizontal') {
+                    newX = spacingGuide.position;
+                } else {
+                    newY = spacingGuide.position;
+                }
+                hasSpacingGuide = true;
+            }
+            
+            // 同时应用对齐调整（即使有间距线也会检查对齐）
+            if (alignmentGuides.length > 0) {
+                const verticalGuide = alignmentGuides.find(guide => guide.type === 'vertical'); // 垂直方向的线，用于水平对齐
+                const horizontalGuide = alignmentGuides.find(guide => guide.type === 'horizontal'); // 水平方向的线，用于垂直对齐
+                
+                if (verticalGuide) {
+                    // 根据对齐类型调整X坐标（垂直方向的线表示水平对齐）
+                    const otherNode = this.nodes.find(n => n.id === verticalGuide.nodeId);
+                    const otherBounds = this.getNodeBounds(otherNode);
+                    
+                    if (verticalGuide.axis === 'left') {
+                        newX = otherBounds.left + this.dragNode.width / 2;
+                    } else if (verticalGuide.axis === 'right') {
+                        newX = otherBounds.right - this.dragNode.width / 2;
+                    }
+                }
+                
+                if (horizontalGuide) {
+                    // 根据对齐类型调整Y坐标（水平方向的线表示垂直对齐）
+                    const otherNode = this.nodes.find(n => n.id === horizontalGuide.nodeId);
+                    const otherBounds = this.getNodeBounds(otherNode);
+                    
+                    if (horizontalGuide.axis === 'top') {
+                        newY = otherBounds.top + this.dragNode.height / 2;
+                    } else if (horizontalGuide.axis === 'bottom') {
+                        newY = otherBounds.bottom - this.dragNode.height / 2;
+                    } else if (horizontalGuide.axis === 'center') {
+                        newY = otherNode.y;
+                    }
+                }
+            }
+            
+            // 计算实际的偏移量
+            const actualDeltaX = newX - this.dragStartNodeX;
+            const actualDeltaY = newY - this.dragStartNodeY;
+            
+            // 更新所有选中的节点位置
+            if (this.selectedNodes.length > 1) {
+                this.selectedNodes.forEach(node => {
+                    const nodeNewX = node.x + actualDeltaX;
+                    const nodeNewY = node.y + actualDeltaY;
+                    node.updatePosition(nodeNewX, nodeNewY);
+                });
+            } else {
+                // 如果位置有变化，更新节点位置
+                if (newX !== this.dragStartNodeX || newY !== this.dragStartNodeY) {
+                    this.dragNode.updatePosition(newX, newY);
+                }
+            }
+        }
+        
+        // 重置拖拽状态
+        this.isDragging = false;
+        this.dragNode = null;
+        this.alignmentGuides = [];
+        this.spacingGuides = [];
+        
+        // 移除will-change属性和transform
+        if (this.draggedNodeElements) {
+            Object.values(this.draggedNodeElements).forEach(draggedElement => {
+                const element = draggedElement.element;
+                element.style.willChange = '';
+                element.style.transform = '';
+            });
+            this.draggedNodeElements = null;
+        }
+        
+        // 保存状态到历史记录
+        this.saveState();
+        
+        // 移除触摸事件监听器
+        document.removeEventListener('touchmove', this.touchDrag);
+        document.removeEventListener('touchend', this.stopTouchDrag);
+        document.removeEventListener('touchcancel', this.stopTouchDrag);
+        
+        // 重新渲染
+        this.render();
+    }
+    
     // 检测对齐
     detectAlignment(dragNode) {
         const dragBounds = dragNode.getNodeBounds();
@@ -1463,8 +1847,8 @@ class MindMap {
             }
             
             // 垂直对齐检测（仅保留中心对齐）
-            // 垂直居中对齐
-            if (Math.abs(dragBounds.centerY - otherBounds.centerY) < tolerance) {
+            // 垂直居中对齐 - 在移动设备上禁用，避免子节点被限制在相同坐标高度
+            if (!this.isMobile && Math.abs(dragBounds.centerY - otherBounds.centerY) < tolerance) {
                 alignmentGuides.push({
                     type: 'horizontal',
                     position: dragBounds.centerY,
@@ -1700,7 +2084,7 @@ class MindMap {
                     line.setAttribute('x2', largeRange + this.canvasOffsetX);
                     line.setAttribute('y2', guide.position + this.canvasOffsetY);
                     line.setAttribute('stroke', '#ff0000');
-                    line.setAttribute('stroke-width', '3');
+                    line.setAttribute('stroke-width', '1');
                     line.setAttribute('stroke-dasharray', '8,4');
                     line.setAttribute('opacity', '0.8');
                 } else {
@@ -1710,7 +2094,7 @@ class MindMap {
                     line.setAttribute('x2', guide.position + this.canvasOffsetX);
                     line.setAttribute('y2', largeRange + this.canvasOffsetY);
                     line.setAttribute('stroke', '#ff0000');
-                    line.setAttribute('stroke-width', '3');
+                    line.setAttribute('stroke-width', '1');
                     line.setAttribute('stroke-dasharray', '8,4');
                     line.setAttribute('opacity', '0.8');
                 }
@@ -1742,7 +2126,7 @@ class MindMap {
                 }
                 
                 spacingLine.setAttribute('stroke', '#0000ff');
-                spacingLine.setAttribute('stroke-width', '3');
+                spacingLine.setAttribute('stroke-width', '1');
                 spacingLine.setAttribute('stroke-dasharray', '8,4');
                 spacingLine.setAttribute('opacity', '0.8');
                 spacingLine.setAttribute('class', 'spacing-guide');
@@ -1839,19 +2223,10 @@ class MindMap {
             fo.style.display = 'none';
         });
         
-        // 创建一个完全透明的编辑层，仅用于提供点击区域
-        const editLayer = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-        editLayer.setAttribute('x', node.x - node.width / 2);
-        editLayer.setAttribute('y', node.y - node.height / 2);
-        editLayer.setAttribute('width', node.width);
-        editLayer.setAttribute('height', node.height);
-        editLayer.setAttribute('fill', 'transparent');
-        editLayer.setAttribute('stroke', 'none');
-        editLayer.setAttribute('rx', node.height / 2); // 保持与跑道形状相同的圆角
-        editLayer.setAttribute('ry', node.height / 2);
-        editLayer.setAttribute('class', 'edit-layer');
+        // 获取跑道形状元素
+        const rectPath = nodeGroup.querySelector('path');
         
-        // 创建文本输入框，位置与原始文本完全一致
+        // 创建文本输入foreignObject
         const textInput = document.createElementNS('http://www.w3.org/2000/svg', 'foreignObject');
         textInput.setAttribute('x', node.x - node.width / 2 + 10);
         textInput.setAttribute('y', node.y - node.height / 2 + 10);
@@ -1859,9 +2234,11 @@ class MindMap {
         textInput.setAttribute('height', node.height - 20);
         textInput.setAttribute('class', 'edit-foreign-object');
         
-        // 创建HTML文本区域元素，与原始文本样式完全一致
+        // 创建HTML文本区域元素
         const textarea = document.createElement('textarea');
         textarea.value = node.text;
+        
+        // 设置textarea样式 - 确保文本选择功能正常
         textarea.style.width = '100%';
         textarea.style.height = '100%';
         textarea.style.border = 'none';
@@ -1869,7 +2246,7 @@ class MindMap {
         textarea.style.fontSize = `${node.style.fontSize}px`;
         textarea.style.fontFamily = node.style.fontFamily;
         textarea.style.color = node.style.fontColor;
-        textarea.style.textAlign = 'left'; // 与原始文本对齐方式一致
+        textarea.style.textAlign = 'left';
         textarea.style.outline = 'none';
         textarea.style.padding = '0';
         textarea.style.resize = 'none';
@@ -1878,19 +2255,23 @@ class MindMap {
         textarea.style.wordWrap = 'break-word';
         textarea.style.lineHeight = '1.4';
         textarea.style.cursor = 'text';
-        textarea.style.display = 'flex';
-        textarea.style.alignItems = 'center';
-        textarea.style.justifyContent = 'flex-start'; // 与原始文本对齐方式一致
+        textarea.style.display = 'block';
+        textarea.style.verticalAlign = 'top';
+        
+        // 明确允许文本选择
+        textarea.style.userSelect = 'text';
+        textarea.style.webkitUserSelect = 'text';
+        textarea.style.mozUserSelect = 'text';
+        textarea.style.msUserSelect = 'text';
         
         // 添加到foreignObject
         textInput.appendChild(textarea);
         
-        // 保存原始文本，用于取消编辑
+        // 保存原始文本
         const originalText = node.text;
         
         // 清理函数
         const cleanup = () => {
-            // 设置编辑状态为false
             this.isEditingNode = false;
             
             // 恢复原始文本显示
@@ -1899,9 +2280,6 @@ class MindMap {
             });
             
             // 移除编辑元素
-            if (nodeGroup.contains(editLayer)) {
-                nodeGroup.removeChild(editLayer);
-            }
             if (nodeGroup.contains(textInput)) {
                 nodeGroup.removeChild(textInput);
             }
@@ -1909,69 +2287,170 @@ class MindMap {
         
         // 处理编辑完成事件
         const finishEditing = () => {
-            // 移除事件监听器
-            textarea.removeEventListener('blur', finishEditing);
             textarea.removeEventListener('keydown', handleKeyDown);
             textarea.removeEventListener('input', autoResize);
+            
+            // 移除全局事件监听器
+            document.removeEventListener('mousedown', handleGlobalMouseDown);
+            
+            // 移除所有阻止冒泡的事件监听器
+            eventsToPrevent.forEach(event => {
+                nodeGroup.removeEventListener(event, preventBubble, true);
+            });
             
             cleanup();
             
             // 更新节点文本
-            const newText = textarea.value.trim() || '新节点';
+            const newText = textarea.value.trim();
             this.updateNodeText(node, newText);
         };
         
         // 处理键盘事件
         const handleKeyDown = (e) => {
-            if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                finishEditing();
-            } else if (e.key === 'Escape') {
+            if (e.key === 'Escape') {
                 e.preventDefault();
                 
-                // 移除事件监听器
-                textarea.removeEventListener('blur', finishEditing);
                 textarea.removeEventListener('keydown', handleKeyDown);
                 textarea.removeEventListener('input', autoResize);
                 
+                // 移除全局事件监听器
+                document.removeEventListener('mousedown', handleGlobalMouseDown);
+                
+                // 移除所有阻止冒泡的事件监听器
+                eventsToPrevent.forEach(event => {
+                    nodeGroup.removeEventListener(event, preventBubble, true);
+                });
+                
                 cleanup();
                 
-                // 恢复原始文本并重新渲染
-                node.text = originalText;
-                this.render();
+                // 保存当前输入的文本
+                const newText = textarea.value.trim();
+                this.updateNodeText(node, newText);
             }
         };
         
-        // 自动调整文本区域高度
+        // 自动调整文本区域和节点大小
         const autoResize = () => {
+            // 调整textarea高度
             textarea.style.height = 'auto';
-            textarea.style.height = `${Math.min(textarea.scrollHeight, 200)}px`;
+            textarea.style.height = `${textarea.scrollHeight}px`;
+            
+            // 使用Canvas测量文本宽度
+            const ctx = document.createElement('canvas').getContext('2d');
+            ctx.font = `${node.style.fontSize}px ${node.style.fontFamily}`;
+            
+            const lines = textarea.value.split('\n');
+            let maxLineWidth = 0;
+            let totalHeight = 0;
+            const lineHeight = parseInt(node.style.fontSize) * 1.4;
+            const padding = 20;
+            
+            lines.forEach(line => {
+                const lineWidth = ctx.measureText(line).width;
+                maxLineWidth = Math.max(maxLineWidth, lineWidth);
+                totalHeight += lineHeight;
+            });
+            
+            // 更新节点大小
+            node.width = Math.max(maxLineWidth + padding * 2, 100);
+            node.height = Math.max(totalHeight + padding * 2, 50);
+            
+            // 更新foreignObject大小
+            const textWidth = node.width - 20;
+            const textHeight = node.height - 20;
+            
+            textInput.setAttribute('x', node.x - node.width / 2 + 10);
+            textInput.setAttribute('y', node.y - node.height / 2 + 10);
+            textInput.setAttribute('width', textWidth);
+            textInput.setAttribute('height', textHeight);
+            
+            textarea.style.width = `${textWidth}px`;
+            textarea.style.height = `${textHeight}px`;
+            
+            // 更新跑道形状
+            if (rectPath) {
+                const radius = node.height / 2;
+                const x = node.x - node.width / 2;
+                const y = node.y - node.height / 2;
+                
+                const pathData = [
+                    `M${x + radius} ${y}`,
+                    `L${x + node.width - radius} ${y}`,
+                    `A${radius} ${radius} 0 0 1 ${x + node.width} ${y + radius}`,
+                    `L${x + node.width} ${y + node.height - radius}`,
+                    `A${radius} ${radius} 0 0 1 ${x + node.width - radius} ${y + node.height}`,
+                    `L${x + radius} ${y + node.height}`,
+                    `A${radius} ${radius} 0 0 1 ${x} ${y + node.height - radius}`,
+                    `L${x} ${y + radius}`,
+                    `A${radius} ${radius} 0 0 1 ${x + radius} ${y}`,
+                    'Z'
+                ].join(' ');
+                
+                rectPath.setAttribute('d', pathData);
+            }
         };
         
+        // 全局鼠标按下事件处理程序
+        // 只在鼠标按下时检查是否点击了节点框外的区域
+        const handleGlobalMouseDown = (e) => {
+            // 检查点击目标是否在textarea内部
+            if (e.target === textarea || textarea.contains(e.target)) {
+                // 如果点击的是textarea内部，不做任何操作
+                return;
+            }
+            
+            // 检查点击目标是否在节点组内部
+            if (nodeGroup.contains(e.target)) {
+                // 如果点击的是节点组内部（但不是textarea），不做任何操作
+                return;
+            }
+            
+            // 检查是否有其他编辑区域
+            const otherEditArea = e.target.closest('.edit-foreign-object');
+            if (otherEditArea) {
+                // 如果点击的是其他编辑区域，不做任何操作
+                return;
+            }
+            
+            // 如果点击的是节点框外的区域，退出编辑模式
+            finishEditing();
+        };
+        
+        // 在编辑模式下，阻止节点组的所有事件冒泡
+        // 这样可以确保文本选择操作不会被其他事件处理程序干扰
+        const preventBubble = (e) => {
+            e.stopPropagation();
+        };
+        
+        // 为节点组添加所有可能的事件监听器，阻止事件冒泡
+        const eventsToPrevent = ['click', 'mousedown', 'mouseup', 'mousemove', 'dblclick', 'touchstart', 'touchmove', 'touchend'];
+        eventsToPrevent.forEach(event => {
+            nodeGroup.addEventListener(event, preventBubble, true);
+        });
+        
         // 添加事件监听器
-        textarea.addEventListener('blur', finishEditing);
         textarea.addEventListener('keydown', handleKeyDown);
         textarea.addEventListener('input', autoResize);
         
+        // 添加全局鼠标按下事件监听器
+        // 使用mousedown而不是click，避免与文本选择冲突
+        document.addEventListener('mousedown', handleGlobalMouseDown);
+        
         // 添加编辑元素到节点组
-        nodeGroup.appendChild(editLayer);
         nodeGroup.appendChild(textInput);
         
-        // 在Firefox中，使用setTimeout确保元素已正确渲染
+        // 聚焦文本框 - 允许光标选择
         setTimeout(() => {
             try {
-                // 聚焦并选中文本
                 textarea.focus();
-                textarea.select();
-                // 调整高度
+                // 不自动全选，让用户可以直接选择文本
+                textarea.selectionStart = textarea.selectionEnd = textarea.value.length;
                 autoResize();
-                console.log('Textarea focused successfully');
             } catch (e) {
                 console.error('Focus error:', e);
-                // 清理失败的编辑
                 cleanup();
             }
-        }, 150); // 增加延迟以确保在Firefox中正常工作
+        }, 100);
     }
     
     addChildNode(parentNode = null) {
@@ -1979,38 +2458,39 @@ class MindMap {
         
         if (!parent) return;
         
-        // 计算新节点位置（在右侧添加）
+        // 计算新节点位置
         // 根据节点实际尺寸计算合适的距离，保持美观
         const spacing = 50; // 节点之间的间距
+        const estimatedNodeHeight = 50; // 估计的新节点高度
         const estimatedNodeWidth = 100; // 估计的新节点宽度
         
-        // 如果父节点有子节点，找到最右侧的子节点，在其右侧添加
-        let newX = parent.x + parent.width / 2 + spacing + estimatedNodeWidth / 2;
-        let newY = parent.y;
+        let newX, newY;
         
-        if (parent.children.length > 0) {
-            // 找到父节点最右侧的子节点
-            const rightmostChild = parent.children.reduce((rightmost, child) => {
-                const rightmostBounds = rightmost.getNodeBounds();
+        if (parent.children.length === 0) {
+            // 第一个子节点，放在父节点右侧，距离为默认节点宽度的3倍
+            newX = parent.x + parent.width / 2 + estimatedNodeWidth * 3 + estimatedNodeWidth / 2;
+            newY = parent.y; // 与父节点保持同一水平中心线
+        } else {
+            // 不是第一个子节点，找到最下方的子节点，在其下方添加
+            const bottommostChild = parent.children.reduce((bottommost, child) => {
+                const bottommostBounds = bottommost.getNodeBounds();
                 const childBounds = child.getNodeBounds();
-                return (childBounds.right > rightmostBounds.right) ? child : rightmost;
+                return (childBounds.bottom > bottommostBounds.bottom) ? child : bottommost;
             }, parent.children[0]); // 提供初始值
             
-            const rightmostBounds = rightmostChild.getNodeBounds();
-            newX = rightmostBounds.right + spacing + estimatedNodeWidth / 2;
-            newY = rightmostChild.y; // 与最右侧子节点保持同一水平线
+            const bottommostBounds = bottommostChild.getNodeBounds();
+            newX = bottommostChild.x; // 与最下方子节点保持同一垂直线
+            newY = bottommostBounds.bottom + spacing + estimatedNodeHeight / 2;
         }
         
-        const newNode = this.createNode('新节点', newX, newY, parent);
+        // 创建空节点
+        const newNode = this.createNode('', newX, newY, parent);
         this.selectNode(newNode);
         this.render();
-        
-        // 自动编辑新节点
-        this.editNodeText(newNode);
     }
     
     updateStylePanel() {
-        if (!this.selectedNode) {
+        if (this.selectedNodes.length === 0) {
             // 禁用样式面板
             document.getElementById('nodeColor').disabled = true;
             document.getElementById('borderColor').disabled = true;
@@ -2020,22 +2500,69 @@ class MindMap {
             return;
         }
         
-        // 启用样式面板并设置当前值
+        // 启用样式面板
         document.getElementById('nodeColor').disabled = false;
         document.getElementById('borderColor').disabled = false;
         document.getElementById('fontColor').disabled = false;
         document.getElementById('fontSize').disabled = false;
         document.getElementById('fontFamily').disabled = false;
         
-        document.getElementById('nodeColor').value = this.selectedNode.style.nodeColor;
-        document.getElementById('borderColor').value = this.selectedNode.style.borderColor;
-        document.getElementById('fontColor').value = this.selectedNode.style.fontColor;
-        document.getElementById('fontSize').value = this.selectedNode.style.fontSize;
-        document.getElementById('fontFamily').value = this.selectedNode.style.fontFamily;
+        if (this.selectedNodes.length === 1) {
+            // 单个节点选中，显示该节点的样式
+            const node = this.selectedNodes[0];
+            document.getElementById('nodeColor').value = node.style.nodeColor;
+            document.getElementById('borderColor').value = node.style.borderColor;
+            document.getElementById('fontColor').value = node.style.fontColor;
+            document.getElementById('fontSize').value = node.style.fontSize;
+            document.getElementById('fontFamily').value = node.style.fontFamily;
+        } else {
+            // 多个节点选中，检查是否所有节点的样式属性相同
+            // 节点颜色
+            const nodeColors = new Set(this.selectedNodes.map(node => node.style.nodeColor));
+            if (nodeColors.size === 1) {
+                document.getElementById('nodeColor').value = this.selectedNodes[0].style.nodeColor;
+            } else {
+                // 如果颜色不同，不设置值（保持当前值或默认值）
+                // 这里可以选择显示空值或第一个节点的值
+                document.getElementById('nodeColor').value = this.selectedNodes[0].style.nodeColor;
+            }
+            
+            // 边框颜色
+            const borderColors = new Set(this.selectedNodes.map(node => node.style.borderColor));
+            if (borderColors.size === 1) {
+                document.getElementById('borderColor').value = this.selectedNodes[0].style.borderColor;
+            } else {
+                document.getElementById('borderColor').value = this.selectedNodes[0].style.borderColor;
+            }
+            
+            // 字体颜色
+            const fontColors = new Set(this.selectedNodes.map(node => node.style.fontColor));
+            if (fontColors.size === 1) {
+                document.getElementById('fontColor').value = this.selectedNodes[0].style.fontColor;
+            } else {
+                document.getElementById('fontColor').value = this.selectedNodes[0].style.fontColor;
+            }
+            
+            // 字体大小
+            const fontSizes = new Set(this.selectedNodes.map(node => node.style.fontSize));
+            if (fontSizes.size === 1) {
+                document.getElementById('fontSize').value = this.selectedNodes[0].style.fontSize;
+            } else {
+                document.getElementById('fontSize').value = this.selectedNodes[0].style.fontSize;
+            }
+            
+            // 字体
+            const fontFamilies = new Set(this.selectedNodes.map(node => node.style.fontFamily));
+            if (fontFamilies.size === 1) {
+                document.getElementById('fontFamily').value = this.selectedNodes[0].style.fontFamily;
+            } else {
+                document.getElementById('fontFamily').value = this.selectedNodes[0].style.fontFamily;
+            }
+        }
     }
     
     updateNodeStyle() {
-        if (!this.selectedNode) return;
+        if (this.selectedNodes.length === 0) return;
         
         // 保存状态到历史记录
         this.saveState();
@@ -2048,7 +2575,11 @@ class MindMap {
             fontFamily: document.getElementById('fontFamily').value
         };
         
-        this.selectedNode.updateStyle(newStyle);
+        // 为所有选中的节点应用相同的样式
+        this.selectedNodes.forEach(node => {
+            node.updateStyle(newStyle);
+        });
+        
         this.render();
     }
     
@@ -2375,20 +2906,83 @@ class MindMap {
                                 nodePath.removeAttribute('stroke-dasharray');
                                 nodePath.removeAttribute('opacity');
                             }
+                            
+                            // 移除画布平移转换
+                            nodeGroup.removeAttribute('transform');
                         }
                     });
                     
-                    // 确保连接线（曲线）的颜色正确
+                    // 确保连接线（曲线）的颜色正确并修正坐标
                     const pngConnections = tempPngCanvas.querySelectorAll('.connection');
                     pngConnections.forEach(connection => {
+                        // 修正坐标：移除canvasOffsetX和canvasOffsetY
+                        let path = connection.getAttribute('d');
+                        
+                        // 使用更健壮的路径解析方法
+                        const pathData = path.match(/([MLC])([^MLC]*)/gi) || [];
+                        let newPath = '';
+                        
+                        pathData.forEach(segment => {
+                            const cmd = segment.charAt(0);
+                            const coords = segment.slice(1).trim();
+                            
+                            if (coords) {
+                                const coordPairs = coords.match(/([\d.-]+)\s+([\d.-]+)/gi) || [];
+                                newPath += cmd;
+                                
+                                coordPairs.forEach(pair => {
+                                    const [x, y] = pair.split(/\s+/).map(Number);
+                                    // 减去偏移量，保留两位小数以提高精度
+                                    const newX = (x - this.canvasOffsetX).toFixed(2);
+                                    const newY = (y - this.canvasOffsetY).toFixed(2);
+                                    newPath += ` ${newX} ${newY}`;
+                                });
+                                
+                                newPath += ' ';
+                            } else {
+                                newPath += cmd + ' ';
+                            }
+                        });
+                        
+                        connection.setAttribute('d', newPath.trim());
                         connection.setAttribute('stroke', this.connectionColor);
                         connection.setAttribute('stroke-width', '2');
                         connection.setAttribute('fill', 'none');
                     });
                     
-                    // 确保箭头的颜色正确
+                    // 确保箭头的颜色正确并修正坐标
                     const pngArrows = tempPngCanvas.querySelectorAll('.arrow');
                     pngArrows.forEach(arrow => {
+                        // 修正坐标：移除canvasOffsetX和canvasOffsetY
+                        let path = arrow.getAttribute('d');
+                        
+                        // 使用更健壮的路径解析方法
+                        const pathData = path.match(/([MLZ])([^MLZ]*)/gi) || [];
+                        let newPath = '';
+                        
+                        pathData.forEach(segment => {
+                            const cmd = segment.charAt(0);
+                            const coords = segment.slice(1).trim();
+                            
+                            if (coords) {
+                                const coordPairs = coords.match(/([\d.-]+)\s+([\d.-]+)/gi) || [];
+                                newPath += cmd;
+                                
+                                coordPairs.forEach(pair => {
+                                    const [x, y] = pair.split(/\s+/).map(Number);
+                                    // 减去偏移量，保留两位小数以提高精度
+                                    const newX = (x - this.canvasOffsetX).toFixed(2);
+                                    const newY = (y - this.canvasOffsetY).toFixed(2);
+                                    newPath += ` ${newX} ${newY}`;
+                                });
+                                
+                                newPath += ' ';
+                            } else {
+                                newPath += cmd + ' ';
+                            }
+                        });
+                        
+                        arrow.setAttribute('d', newPath.trim());
                         arrow.setAttribute('fill', this.connectionColor);
                         arrow.setAttribute('stroke', this.connectionColor);
                         arrow.setAttribute('stroke-width', '1');
@@ -2397,10 +2991,17 @@ class MindMap {
                     // 计算所有节点的边界框，用于设置SVG的导出区域
                     const pngBoundingBox = this.calculateNodesBoundingBox();
                     
+                    // 添加适当的边距
+                    const pngMargin = 20;
+                    const pngViewBoxX = pngBoundingBox.minX - pngMargin;
+                    const pngViewBoxY = pngBoundingBox.minY - pngMargin;
+                    const pngViewBoxWidth = pngBoundingBox.width + 2 * pngMargin;
+                    const pngViewBoxHeight = pngBoundingBox.height + 2 * pngMargin;
+                    
                     // 设置SVG的viewBox和尺寸，确保包含所有节点并具有适当边距
-                    tempPngCanvas.setAttribute('viewBox', `${pngBoundingBox.minX} ${pngBoundingBox.minY} ${pngBoundingBox.width} ${pngBoundingBox.height}`);
-                    tempPngCanvas.setAttribute('width', `${pngBoundingBox.width}px`);
-                    tempPngCanvas.setAttribute('height', `${pngBoundingBox.height}px`);
+                    tempPngCanvas.setAttribute('viewBox', `${pngViewBoxX} ${pngViewBoxY} ${pngViewBoxWidth} ${pngViewBoxHeight}`);
+                    tempPngCanvas.setAttribute('width', `${pngViewBoxWidth}px`);
+                    tempPngCanvas.setAttribute('height', `${pngViewBoxHeight}px`);
                     // 保持preserveAspectRatio为xMidYMid meet，确保内容不会被拉伸
                     tempPngCanvas.setAttribute('preserveAspectRatio', 'xMidYMid meet');
                     
@@ -2425,17 +3026,17 @@ class MindMap {
                         // 提高分辨率倍数，值越大图像越清晰但文件越大
                         const resolution = 2;
                         
-                        // 设置Canvas大小为边界框尺寸乘以分辨率倍数
-                        canvas.width = pngBoundingBox.width * resolution;
-                        canvas.height = pngBoundingBox.height * resolution;
+                        // 设置Canvas大小为包含边距的完整尺寸乘以分辨率倍数
+                        canvas.width = pngViewBoxWidth * resolution;
+                        canvas.height = pngViewBoxHeight * resolution;
                         
                         // 设置缩放因子
                         ctx.scale(resolution, resolution);
                         
                         // 绘制SVG内容到Canvas
                         ctx.fillStyle = '#ffffff';
-                        ctx.fillRect(0, 0, pngBoundingBox.width, pngBoundingBox.height);
-                        ctx.drawImage(img, 0, 0, pngBoundingBox.width, pngBoundingBox.height);
+                        ctx.fillRect(0, 0, pngViewBoxWidth, pngViewBoxHeight);
+                        ctx.drawImage(img, 0, 0, pngViewBoxWidth, pngViewBoxHeight);
                         
                         // 将Canvas内容转换为PNG
                         try {
@@ -3542,6 +4143,11 @@ class MindMap {
         
         // 画布按下事件（开始框选或画布拖动）
         this.canvas.addEventListener('mousedown', (e) => {
+            // 如果处于编辑模式，不执行任何操作
+            if (this.isEditingNode) {
+                return;
+            }
+            
             // 如果点击的是画布本身（不是节点或其他元素）
             if (e.target === this.canvas) {
                 // 确保只有一个操作状态被激活
@@ -3567,6 +4173,11 @@ class MindMap {
         
         // 鼠标移动事件（处理框选或画布拖动）
         this.canvas.addEventListener('mousemove', (e) => {
+            // 如果处于编辑模式，不执行任何操作
+            if (this.isEditingNode) {
+                return;
+            }
+            
             // 如果正在进行画布拖动
             if (this.isPanning) {
                 const coords = this.clientToSvgCoords(e.clientX, e.clientY);
@@ -3595,6 +4206,11 @@ class MindMap {
         
         // 鼠标释放事件（结束框选或画布拖动）
         this.canvas.addEventListener('mouseup', (e) => {
+            // 如果处于编辑模式，不执行任何操作
+            if (this.isEditingNode) {
+                return;
+            }
+            
             // 如果正在进行画布拖动
             if (this.isPanning) {
                 this.isPanning = false;
@@ -3611,6 +4227,11 @@ class MindMap {
         
         // 鼠标离开画布事件（结束所有操作）
         this.canvas.addEventListener('mouseleave', () => {
+            // 如果处于编辑模式，不执行任何操作
+            if (this.isEditingNode) {
+                return;
+            }
+            
             if (this.isPanning) {
                 this.isPanning = false;
                 this.canvas.style.cursor = 'default';
@@ -3624,13 +4245,24 @@ class MindMap {
         // 双击画布创建节点（当没有节点存在时）
         this.canvas.addEventListener('dblclick', (e) => {
             if (this.nodes.length === 0) {
-                const coords = this.clientToSvgCoords(e.clientX, e.clientY);
-                const newNode = this.createNode('新节点', coords.x, coords.y);
+                // 获取画布的边界矩形
+                const rect = this.canvas.getBoundingClientRect();
+                
+                // 计算双击位置相对于画布的坐标（屏幕坐标）
+                const screenX = e.clientX - rect.left;
+                const screenY = e.clientY - rect.top;
+                
+                // 考虑当前画布偏移量，计算节点的世界坐标
+                // 节点渲染时会加上canvasOffsetX/Y，所以这里需要减去它们
+                // 这样节点才能准确出现在双击的屏幕位置
+                const worldX = screenX - this.canvasOffsetX;
+                const worldY = screenY - this.canvasOffsetY;
+                
+                // 创建空节点，使用计算出的世界坐标
+                const newNode = this.createNode('', worldX, worldY);
                 this.rootNode = newNode;
                 this.selectNode(newNode);
                 this.render();
-                // 自动编辑新节点文本
-                this.editNodeText(newNode);
             }
         });
         
@@ -3671,26 +4303,46 @@ class MindMap {
             }
             // 复制功能 (Ctrl+C)
             else if (this.isCtrlPressed && e.key === 'c') {
+                // 如果正在编辑节点文本，不执行节点复制操作，让默认的文本复制行为发生
+                if (this.isEditingNode) {
+                    return; // 让事件自然冒泡，由文本编辑框处理
+                }
                 e.preventDefault();
                 this.copySelectedNodes();
             }
             // 粘贴功能 (Ctrl+V)
             else if (this.isCtrlPressed && e.key === 'v') {
+                // 如果正在编辑节点文本，不执行节点粘贴操作，让默认的文本粘贴行为发生
+                if (this.isEditingNode) {
+                    return; // 让事件自然冒泡，由文本编辑框处理
+                }
                 e.preventDefault();
                 this.pasteNodes();
             }
             // 撤销功能 (Ctrl+Z)
             else if (this.isCtrlPressed && e.key === 'z') {
+                // 如果正在编辑节点文本，不执行思维导图撤销操作，让默认的文本撤销行为发生
+                if (this.isEditingNode) {
+                    return; // 让事件自然冒泡，由文本编辑框处理
+                }
                 e.preventDefault();
                 this.undo();
             }
             // 重做功能 (Ctrl+Y)
             else if (this.isCtrlPressed && e.key === 'y') {
+                // 如果正在编辑节点文本，不执行思维导图重做操作，让默认的文本重做行为发生
+                if (this.isEditingNode) {
+                    return; // 让事件自然冒泡，由文本编辑框处理
+                }
                 e.preventDefault();
                 this.redo();
             }
             // 全选功能 (Ctrl+A)
             else if (this.isCtrlPressed && e.key === 'a') {
+                // 如果正在编辑节点文本，不执行节点全选操作，让默认的文本全选行为发生
+                if (this.isEditingNode) {
+                    return; // 让事件自然冒泡，由文本编辑框处理
+                }
                 e.preventDefault();
                 // 选择所有节点
                 if (this.nodes.length > 0) {
@@ -4013,8 +4665,8 @@ class MindMap {
         canvasBoundaryRect.setAttribute('height', totalHeight * this.thumbnailScale);
         canvasBoundaryRect.setAttribute('fill', 'none');
         canvasBoundaryRect.setAttribute('stroke', '#adb5bd');
-        canvasBoundaryRect.setAttribute('stroke-width', '1.5');
-        canvasBoundaryRect.setAttribute('stroke-dasharray', '4,2');
+        canvasBoundaryRect.setAttribute('stroke-width', '1');
+        canvasBoundaryRect.setAttribute('stroke-dasharray', '2,1');
         this.thumbnailCanvas.appendChild(canvasBoundaryRect);
         
         // 创建总边界框对象，传递给其他函数
@@ -4171,15 +4823,52 @@ class MindMap {
         const canvasRect = this.canvas.getBoundingClientRect();
         
         // 计算所有节点的边界框
-        const boundingBox = this.calculateNodesBoundingBox();
+        const nodesBoundingBox = this.calculateNodesBoundingBox();
         
-        // 计算缩略图的原点偏移（基于所有节点的边界框）
-        const thumbnailOriginX = (this.thumbnailWidth - boundingBox.width * this.thumbnailScale) / 2;
-        const thumbnailOriginY = (this.thumbnailHeight - boundingBox.height * this.thumbnailScale) / 2;
+        // 计算视口矩形的世界坐标边界
+        const viewportLeft = -this.canvasOffsetX;
+        const viewportTop = -this.canvasOffsetY;
+        const viewportRight = -this.canvasOffsetX + canvasRect.width;
+        const viewportBottom = -this.canvasOffsetY + canvasRect.height;
+        
+        // 计算包含所有节点和视口矩形的总边界框
+        // 从节点边界框开始
+        let totalMinX = nodesBoundingBox.minX;
+        let totalMinY = nodesBoundingBox.minY;
+        let totalMaxX = nodesBoundingBox.maxX;
+        let totalMaxY = nodesBoundingBox.maxY;
+        
+        // 扩展总边界框以包含视口矩形的所有边界
+        totalMinX = Math.min(totalMinX, viewportLeft);
+        totalMinY = Math.min(totalMinY, viewportTop);
+        totalMaxX = Math.max(totalMaxX, viewportRight);
+        totalMaxY = Math.max(totalMaxY, viewportBottom);
+        
+        // 添加额外的内边距，与renderThumbnail保持一致
+        const extraPadding = 15;
+        totalMinX -= extraPadding;
+        totalMinY -= extraPadding;
+        totalMaxX += extraPadding;
+        totalMaxY += extraPadding;
+        
+        // 确保总边界框不为空
+        if (totalMinX >= totalMaxX) {
+            totalMaxX = totalMinX + 100;
+        }
+        if (totalMinY >= totalMaxY) {
+            totalMaxY = totalMinY + 100;
+        }
+        
+        const totalWidth = totalMaxX - totalMinX;
+        const totalHeight = totalMaxY - totalMinY;
+        
+        // 计算缩略图的原点偏移（基于总边界框，与renderThumbnail保持一致）
+        const thumbnailOriginX = (this.thumbnailWidth - totalWidth * this.thumbnailScale) / 2;
+        const thumbnailOriginY = (this.thumbnailHeight - totalHeight * this.thumbnailScale) / 2;
         
         // 将缩略图点击位置转换为世界坐标
-        const worldX = boundingBox.minX + (clickX - thumbnailOriginX) / this.thumbnailScale;
-        const worldY = boundingBox.minY + (clickY - thumbnailOriginY) / this.thumbnailScale;
+        const worldX = totalMinX + (clickX - thumbnailOriginX) / this.thumbnailScale;
+        const worldY = totalMinY + (clickY - thumbnailOriginY) / this.thumbnailScale;
         
         // 更新主画布的偏移量，使目标点位于视口中心
         this.canvasOffsetX = -worldX + canvasRect.width / 2;

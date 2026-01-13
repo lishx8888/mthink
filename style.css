@@ -37,6 +37,18 @@ body {
     box-sizing: border-box;
 }
 
+/* 画布控制按钮（保存/加载） */
+.canvas-controls {
+    display: flex;
+    gap: 8px;
+    padding: 10px;
+    background-color: rgba(255, 255, 255, 0.95);
+    border-bottom: 1px solid #ddd;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
 .panel-button {
     background-color: #444;
     color: white;
@@ -131,6 +143,13 @@ body {
     padding: 15px;
     border-left: 1px solid #ddd;
     overflow-y: auto;
+    /* 确保PC端保持垂直布局 */
+    display: block;
+}
+
+/* 画布控制按钮（仅在手机端显示） */
+.canvas-controls {
+    display: none;
 }
 
 .style-panel h3 {
@@ -197,7 +216,8 @@ body {
     align-items: center;
     justify-items: center;
     flex-shrink: 1;
-    min-width: 130px;
+    width: 100%;
+    min-width: 0;
 }
 
 /* 自定义颜色选择器特殊定位 */
@@ -263,16 +283,183 @@ body {
 }
 
 /* 响应式设计 */
+/* 针对iPhone SE等小屏设备的专门优化 */
+@media (max-width: 375px) {
+    /* 调整画布容器高度 */
+    .canvas-container {
+        max-height: 55vh;
+    }
+    
+    /* 调整样式面板高度，确保所有内容可见且不浪费空间 */
+    .style-panel {
+        height: auto;
+        max-height: 35vh;
+    }
+}
+
 @media (max-width: 768px) {
     .main-area {
         flex-direction: column;
+        height: 100vh;
+        display: flex;
     }
     
+    /* 画布容器 - 上半部分 */
+    .canvas-container {
+        flex: 1;
+        min-height: 50vh;
+        max-height: none;
+        overflow: hidden;
+    }
+    
+    /* 画布控制按钮 - 仅在手机端显示 */
+    .canvas-controls {
+        display: flex;
+        flex-direction: row;
+        justify-content: center;
+        padding: 8px;
+        gap: 12px;
+        background-color: rgba(255, 255, 255, 0.95);
+        border-bottom: 1px solid #ddd;
+        position: sticky;
+        top: 0;
+        z-index: 10;
+    }
+    
+    /* 隐藏手机端样式面板中的按钮（已移到画布顶部） */
+    .style-panel .panel-controls {
+        display: none;
+    }
+    
+    .panel-button {
+        padding: 10px 24px;
+        font-size: 16px;
+    }
+    
+    /* 样式面板 - 下半部分 */
     .style-panel {
         width: 100%;
-        height: 200px;
+        height: auto;
+        max-height: none;
         border-left: none;
         border-top: 1px solid #ddd;
+        overflow-y: hidden;
+        position: relative;
+        background-color: #f8f8f8;
+        /* 手机端使用网格布局 */
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        grid-template-rows: auto auto auto;
+        gap: 2px;
+        padding: 2px;
+        align-content: flex-start;
+        flex-shrink: 1;
+    }
+    
+    /* 样式面板标题 - 手机端隐藏，节省空间 */
+    .style-panel h3 {
+        display: none;
+    }
+    
+    /* 颜色设置组 - 手机端网格项 */
+    .style-panel .style-group {
+        margin-bottom: 0;
+        padding: 2px 3px;
+        background-color: white;
+        border-radius: 3px;
+        border: 1px solid #eee;
+        min-height: auto;
+        margin: 0;
+        display: flex;
+        flex-direction: column;
+        justify-content: flex-start;
+    }
+    
+    /* 字体和字体大小 - 合并为一行 */
+    .style-panel .style-group#fontSettings {
+        grid-column: 1 / -1;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 3px;
+        padding: 2px 3px;
+        align-items: center;
+    }
+    
+    .style-panel .style-group#fontSettings .font-size-group,
+    .style-panel .style-group#fontSettings .font-family-group {
+        margin-bottom: 0;
+        margin-top: 0;
+        padding: 0;
+        display: flex;
+        flex-direction: column;
+        justify-content: flex-start;
+    }
+    
+    .style-group label {
+        font-size: 11px;
+        margin-bottom: 1px;
+        margin-top: 1px;
+        display: block;
+        padding: 0;
+        line-height: 1.2;
+    }
+    
+    /* 颜色调色板 - 手机端优化 */
+    .color-palette {
+        flex-direction: row;
+        gap: 3px;
+        padding: 1px 2px;
+        min-height: auto;
+        width: 100%;
+        margin: 0;
+        height: auto;
+        align-items: center;
+    }
+    
+    .color-swatches-container {
+        grid-template-columns: repeat(6, 1fr);
+        gap: 2px;
+        min-width: 0;
+        width: 100%;
+        height: auto;
+        grid-template-rows: auto;
+    }
+    
+    .color-swatch {
+        width: 12px;
+        height: 12px;
+    }
+    
+    /* 自定义颜色选择器 - 手机端优化 */
+    .custom-color-picker {
+        width: 22px;
+        height: 22px;
+    }
+    
+    /* 字体大小输入框 - 手机端优化 */
+    .style-group input[type="number"] {
+        padding: 2px 2px;
+        font-size: 11px;
+        width: 100%;
+        box-sizing: border-box;
+        height: 24px;
+    }
+    
+    /* 字体选择下拉框 - 手机端优化 */
+    .style-group select {
+        padding: 2px 2px;
+        font-size: 11px;
+        width: 100%;
+        box-sizing: border-box;
+        height: 24px;
+    }
+    
+    /* 缩略图画布 - 手机端优化 */
+    .thumbnail-canvas {
+        bottom: 10px;
+        left: 10px;
+        max-width: 120px;
+        max-height: 120px;
     }
 }
 
@@ -292,10 +479,9 @@ body {
 
 /* 缩略图视口矩形样式 */
 .thumbnail-viewport {
-    fill: none;
-    stroke: #0066cc;
-    stroke-width: 2px;
-    stroke-dasharray: 5, 5;
+    fill: #0066cc;
+    fill-opacity: 0.2;
+    stroke: none;
     opacity: 0.7;
 }
 

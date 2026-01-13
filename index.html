@@ -55,6 +55,7 @@
                     <button id="loadMap" class="panel-button">加载</button>
                 </div>
                 <h3>样式设置</h3>
+                <!-- 颜色设置组 - 两行两列布局 -->
                 <div class="style-group">
                     <label for="nodeColor">节点颜色:</label>
                     <div class="color-palette" data-target="nodeColor">
@@ -116,20 +117,6 @@
                     </div>
                 </div>
                 <div class="style-group">
-                    <label for="fontSize">字体大小:</label>
-                    <input type="number" id="fontSize" value="14" min="8" max="36">
-                </div>
-                <div class="style-group">
-                    <label for="fontFamily">字体:</label>
-                    <select id="fontFamily">
-                        <option value="Arial">Arial</option>
-                        <option value="微软雅黑">微软雅黑</option>
-                        <option value="宋体">宋体</option>
-                        <option value="黑体">黑体</option>
-                        <option value="Times New Roman">Times New Roman</option>
-                    </select>
-                </div>
-                <div class="style-group">
                     <label for="connectionColor">连接线颜色:</label>
                     <div class="color-palette" data-target="connectionColor">
                         <div class="color-swatches-container">
@@ -147,6 +134,23 @@
                             <span class="color-swatch" style="background-color: #32cd32"></span>
                         </div>
                         <input type="color" id="connectionColor" value="#000000" class="custom-color-picker">
+                    </div>
+                </div>
+                <!-- 字体设置组 - 跨两列布局 -->
+                <div class="style-group" id="fontSettings">
+                    <div class="font-size-group">
+                        <label for="fontSize">字体大小:</label>
+                        <input type="number" id="fontSize" value="14" min="8" max="36">
+                    </div>
+                    <div class="font-family-group">
+                        <label for="fontFamily">字体:</label>
+                        <select id="fontFamily">
+                            <option value="Arial">Arial</option>
+                            <option value="微软雅黑">微软雅黑</option>
+                            <option value="宋体">宋体</option>
+                            <option value="黑体">黑体</option>
+                            <option value="Times New Roman">Times New Roman</option>
+                        </select>
                     </div>
                 </div>
             </div>
