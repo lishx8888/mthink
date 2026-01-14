@@ -103,6 +103,7 @@ class MindMap {
         
         // 编辑状态跟踪
         this.isEditingNode = false;
+        this.currentEditingNode = null;
         
         // 连接线和箭头的统一颜色
         this.connectionColor = '#000000'; // 默认黑色
@@ -2206,8 +2207,31 @@ class MindMap {
     editNodeText(node) {
         console.log('editNodeText called for node:', node.id, node.text);
         
+        // 如果有其他节点正在被编辑，先退出编辑状态
+        if (this.currentEditingNode && this.currentEditingNode !== node) {
+            const currentNode = this.currentEditingNode;
+            const currentNodeGroup = document.getElementById(`node-${currentNode.id}`);
+            if (currentNodeGroup) {
+                // 隐藏当前编辑的foreignObject
+                const currentEditFo = currentNodeGroup.querySelector('.edit-foreign-object');
+                if (currentEditFo) {
+                    currentEditFo.remove();
+                }
+                
+                // 显示原始文本
+                const originalForeignObjects = currentNodeGroup.querySelectorAll('foreignObject.node-text-foreign-object');
+                originalForeignObjects.forEach(fo => {
+                    fo.style.display = '';
+                });
+            }
+        }
+        
+        // 选中节点，确保选中状态和横线正确显示
+        this.selectNode(node);
+        
         // 设置编辑状态为true
         this.isEditingNode = true;
+        this.currentEditingNode = node;
         
         const nodeGroup = document.getElementById(`node-${node.id}`);
         if (!nodeGroup) {
@@ -2273,6 +2297,7 @@ class MindMap {
         // 清理函数
         const cleanup = () => {
             this.isEditingNode = false;
+            this.currentEditingNode = null;
             
             // 恢复原始文本显示
             originalForeignObjects.forEach(fo => {
@@ -3005,13 +3030,29 @@ class MindMap {
                     // 保持preserveAspectRatio为xMidYMid meet，确保内容不会被拉伸
                     tempPngCanvas.setAttribute('preserveAspectRatio', 'xMidYMid meet');
                     
+                    // 添加样式元素
+                    const pngStyleElement = document.createElementNS('http://www.w3.org/2000/svg', 'style');
+                    pngStyleElement.textContent = `
+                        .node path { stroke-width: 2px; }
+                        .node text { pointer-events: none; }
+                        .connection { fill: none; stroke-width: 2px; }
+                        .arrow { stroke-width: 1px; }
+                    `;
+                    tempPngCanvas.insertBefore(pngStyleElement, tempPngCanvas.firstChild);
+                    
                     // 移除画布平移，确保内容在新的viewBox中正确显示
                     tempPngCanvas.style.transform = 'none';
                     tempPngCanvas.style.left = '0';
                     tempPngCanvas.style.top = '0';
                     
+                    // 添加到DOM临时元素，确保所有样式都能正确计算
+                    document.body.appendChild(tempPngCanvas);
+                    
                     // 将修改后的SVG转换为PNG
                     const svgData = new XMLSerializer().serializeToString(tempPngCanvas);
+                    
+                    // 从DOM中移除临时元素
+                    document.body.removeChild(tempPngCanvas);
                     const svgBlob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
                     const svgUrl = URL.createObjectURL(svgBlob);
                     
@@ -3130,7 +3171,7 @@ class MindMap {
         // 创建文件选择对话框
         const input = document.createElement('input');
         input.type = 'file';
-        input.accept = 'application/json,image/svg+xml';
+        input.accept = 'application/json';
         
         input.onchange = (e) => {
             const file = e.target.files[0];
@@ -3140,71 +3181,66 @@ class MindMap {
             
             reader.onload = (event) => {
                 try {
-                    if (file.type === 'image/svg+xml' || file.name.endsWith('.svg')) {
-                        // 处理SVG格式
-                        this.loadSvgMap(event.target.result);
-                    } else {
-                        // 处理JSON格式
-                        const mapData = JSON.parse(event.target.result);
+                    // 处理JSON格式
+                    const mapData = JSON.parse(event.target.result);
+                    
+                    // 清空现有数据
+                    this.nodes = [];
+                    this.connections = [];
+                    this.selectedNode = null;
+                    
+                    // 重建节点
+                    const nodeMap = new Map();
+                    
+                    mapData.nodes.forEach(nodeData => {
+                        const node = new Node(
+                            nodeData.id,
+                            nodeData.text,
+                            nodeData.x,
+                            nodeData.y
+                        );
                         
-                        // 清空现有数据
-                        this.nodes = [];
-                        this.connections = [];
-                        this.selectedNode = null;
+                        node.style = nodeData.style;
+                        node.isReverseConnection = nodeData.isReverseConnection || false;
+                        node.width = nodeData.width;
+                        node.height = nodeData.height;
                         
-                        // 重建节点
-                        const nodeMap = new Map();
+                        this.nodes.push(node);
+                        nodeMap.set(node.id, node);
                         
-                        mapData.nodes.forEach(nodeData => {
-                            const node = new Node(
-                                nodeData.id,
-                                nodeData.text,
-                                nodeData.x,
-                                nodeData.y
-                            );
-                            
-                            node.style = nodeData.style;
-                            node.isReverseConnection = nodeData.isReverseConnection || false;
-                            node.width = nodeData.width;
-                            node.height = nodeData.height;
-                            
-                            this.nodes.push(node);
-                            nodeMap.set(node.id, node);
-                            
-                            if (node.id === 1) {
-                                this.rootNode = node;
-                            }
-                        });
-                        
-                        // 重建父子关系
-                        this.nodes.forEach(node => {
-                            const originalNode = mapData.nodes.find(n => n.id === node.id);
-                            if (originalNode) {
-                                // 处理多个父节点
-                                if (originalNode.parents && Array.isArray(originalNode.parents)) {
-                                    originalNode.parents.forEach(parentData => {
-                                        if (parentData && parentData.id) {
-                                            const parentNode = nodeMap.get(parentData.id);
-                                            if (parentNode) {
-                                                parentNode.addChild(node);
-                                            }
+                        if (node.id === 1) {
+                            this.rootNode = node;
+                        }
+                    });
+                    
+                    // 重建父子关系
+                    this.nodes.forEach(node => {
+                        const originalNode = mapData.nodes.find(n => n.id === node.id);
+                        if (originalNode) {
+                            // 处理多个父节点
+                            if (originalNode.parents && Array.isArray(originalNode.parents)) {
+                                originalNode.parents.forEach(parentData => {
+                                    if (parentData && parentData.id) {
+                                        const parentNode = nodeMap.get(parentData.id);
+                                        if (parentNode) {
+                                            parentNode.addChild(node);
                                         }
-                                    });
-                                } else if (originalNode.parent) {
-                                    // 兼容旧数据格式（单个父节点）
-                                    const parentNode = nodeMap.get(originalNode.parent.id);
-                                    if (parentNode) {
-                                        parentNode.addChild(node);
                                     }
+                                });
+                            } else if (originalNode.parent) {
+                                // 兼容旧数据格式（单个父节点）
+                                const parentNode = nodeMap.get(originalNode.parent.id);
+                                if (parentNode) {
+                                    parentNode.addChild(node);
                                 }
                             }
-                        });
-                        
-                        this.nextNodeId = mapData.nextNodeId;
-                        this.render();
-                        
-                        alert('思维导图已加载！');
-                    }
+                        }
+                    });
+                    
+                    this.nextNodeId = mapData.nextNodeId;
+                    this.render();
+                    
+
                 } catch (error) {
                     console.error('加载思维导图失败:', error);
                     alert('加载思维导图失败，请检查文件格式是否正确。');
@@ -3582,7 +3618,7 @@ class MindMap {
 
         // 重新渲染思维导图
         this.render();
-        alert('SVG思维导图已成功加载！');
+
     }
     
     // 初始化保存弹窗事件监听
