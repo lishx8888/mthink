@@ -1439,7 +1439,7 @@ class MindMap {
         const deltaX = e.clientX - this.dragStartX;
         const deltaY = e.clientY - this.dragStartY;
         
-        // 如果有多个节点被选中，移动所有选中的节点
+        // 如果有多个节点被选中，作为整体移动
         if (this.selectedNodes.length > 1) {
             // 移动所有选中的节点
             this.selectedNodes.forEach(node => {
@@ -1454,10 +1454,10 @@ class MindMap {
             this.dragNode.updatePosition(newX, newY);
         }
         
-        // 检测对齐（仅用于显示提示线）
+        // 检测对齐（仅用于显示提示线，基于主节点dragNode）
         this.alignmentGuides = this.detectAlignment(this.dragNode);
         
-        // 检测间距相等（仅用于显示提示线）
+        // 检测间距相等（仅用于显示提示线，基于主节点dragNode）
         this.spacingGuides = this.detectEqualSpacing(this.dragNode);
         
         // 更新拖拽起始位置
@@ -1675,7 +1675,22 @@ class MindMap {
             
             // 如果位置有变化，更新节点位置
             if (newX !== this.dragNode.x || newY !== this.dragNode.y) {
-                this.dragNode.updatePosition(newX, newY);
+                // 计算位置偏移量
+                const offsetX = newX - this.dragNode.x;
+                const offsetY = newY - this.dragNode.y;
+                
+                // 如果有多个节点被选中，作为整体应用偏移（包括对齐）
+                if (this.selectedNodes.length > 1) {
+                    this.selectedNodes.forEach(node => {
+                        const nodeNewX = node.x + offsetX;
+                        const nodeNewY = node.y + offsetY;
+                        node.updatePosition(nodeNewX, nodeNewY);
+                    });
+                } else {
+                    // 只移动单个节点
+                    this.dragNode.updatePosition(newX, newY);
+                }
+                
                 this.render();
             }
         }
@@ -1683,6 +1698,7 @@ class MindMap {
         // 重置拖拽状态
         this.isDragging = false;
         this.dragNode = null;
+        this.draggedNodes = null;
         this.alignmentGuides = [];
         this.spacingGuides = [];
         
