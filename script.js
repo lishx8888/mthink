@@ -280,8 +280,21 @@ class MindMap {
                 childIds: node.children.map(child => child.id)
             })),
             nextNodeId: this.nextNodeId,
-            rootNodeId: this.rootNode ? this.rootNode.id : null
+            rootNodeId: this.rootNode ? this.rootNode.id : null,
+            // 保存选中状态
+            selectedNodeId: this.selectedNode ? this.selectedNode.id : null,
+            selectedNodeIds: this.selectedNodes.map(node => node.id)
         };
+        
+        // 检查新状态是否与当前状态相同，如果相同则不保存
+        if (this.historyIndex >= 0) {
+            const currentState = this.history[this.historyIndex];
+            // 使用JSON.stringify比较状态是否相同
+            const statesAreEqual = JSON.stringify(state) === JSON.stringify(currentState);
+            if (statesAreEqual) {
+                return; // 状态相同，不保存
+            }
+        }
         
         // 添加到历史记录
         this.history.push(state);
@@ -362,6 +375,19 @@ class MindMap {
         
         // 设置下一个节点ID
         this.nextNodeId = state.nextNodeId;
+        
+        // 恢复选中状态
+        if (state.selectedNodeIds) {
+            this.selectedNodes = state.selectedNodeIds.map(id => nodeMap.get(id)).filter(Boolean);
+        } else {
+            this.selectedNodes = [];
+        }
+        
+        if (state.selectedNodeId) {
+            this.selectedNode = nodeMap.get(state.selectedNodeId);
+        } else {
+            this.selectedNode = this.selectedNodes.length > 0 ? this.selectedNodes[0] : null;
+        }
         
         // 更新样式面板和渲染
         this.updateStylePanel();
@@ -856,8 +882,11 @@ class MindMap {
             newY = bottommostBounds.bottom + spacing + estimatedNodeHeight / 2;
         }
         
-        // 创建空节点
-        const newNode = this.createNode('', newX, newY);
+        // 直接创建新节点，不使用createNode函数以避免额外的saveState调用
+        const newNode = new Node(this.nextNodeId++, '', newX, newY);
+        
+        // 添加到节点列表
+        this.nodes.push(newNode);
         
         // 添加目标节点到新节点的子节点列表
         newNode.addChild(targetNode);
@@ -867,7 +896,11 @@ class MindMap {
             this.rootNode = newNode;
         }
         
-        this.selectNode(newNode);
+        // 保持选中原节点
+        this.selectedNode = targetNode;
+        this.selectedNodes = [targetNode];
+        this.updateStylePanel();
+        this.saveState(); // 统一保存状态，确保添加父节点和连接线作为一步撤销
         this.render();
     }
     
@@ -1055,6 +1088,8 @@ class MindMap {
             textDiv.style.justifyContent = 'center';
             textDiv.style.wordWrap = 'break-word';
             textDiv.style.whiteSpace = 'pre-line';
+            textDiv.style.overflowWrap = 'break-word'; // 更现代的属性，确保长单词自动换行
+            textDiv.style.hyphens = 'auto'; // 启用自动连字符
             textDiv.style.color = node.style.fontColor;
             textDiv.style.fontSize = `${node.style.fontSize}px`;
             textDiv.style.fontFamily = node.style.fontFamily;
@@ -1065,7 +1100,8 @@ class MindMap {
             textDiv.style.webkitUserSelect = 'none';
             textDiv.style.mozUserSelect = 'none';
             textDiv.style.msUserSelect = 'none';
-            textDiv.textContent = node.text;
+            // 使用自动换行后的文本或原始文本
+            textDiv.textContent = node.wrappedText ? node.wrappedText.join('\n') : node.text;
             
             // 添加到foreignObject
             foreignObject.appendChild(textDiv);
@@ -1184,27 +1220,92 @@ class MindMap {
     calculateNodeSizes() {
         const ctx = document.createElement('canvas').getContext('2d');
         const lineHeight = 1.4; // 行高倍数
-        const padding = 20; // 节点内边距
-        const minNodeHeight = 50; // 最小节点高度
+        const padding = 15; // 节点内边距
+        const minNodeHeight = 45; // 最小节点高度
+        const maxNodeWidth = 400; // 最大节点宽度（限制为400像素）
+        const maxContentWidth = maxNodeWidth - padding * 2; // 节点内容的最大宽度
+        
+        // 文本自动换行函数
+        const wrapText = (text, maxWidth) => {
+            const lines = [];
+            
+            // 检查是否包含空格
+            if (text.includes(' ')) {
+                // 基于单词的换行
+                const words = text.split(' ');
+                let currentLine = words[0];
+                
+                for (let i = 1; i < words.length; i++) {
+                    const testLine = currentLine + ' ' + words[i];
+                    const testWidth = ctx.measureText(testLine).width;
+                    
+                    if (testWidth <= maxWidth) {
+                        currentLine = testLine;
+                    } else {
+                        lines.push(currentLine);
+                        currentLine = words[i];
+                    }
+                }
+                lines.push(currentLine);
+            } else {
+                // 基于字符的换行（处理无空格长文本）
+                let currentLine = '';
+                
+                for (let i = 0; i < text.length; i++) {
+                    const testLine = currentLine + text[i];
+                    const testWidth = ctx.measureText(testLine).width;
+                    
+                    if (testWidth <= maxWidth) {
+                        currentLine = testLine;
+                    } else {
+                        if (currentLine) {
+                            lines.push(currentLine);
+                        }
+                        currentLine = text[i];
+                    }
+                }
+                if (currentLine) {
+                    lines.push(currentLine);
+                }
+            }
+            
+            return lines;
+        };
         
         this.nodes.forEach(node => {
             ctx.font = `${node.style.fontSize}px ${node.style.fontFamily}`;
             const fontHeight = parseInt(node.style.fontSize) * lineHeight;
             
-            // 处理多行文本
-            const lines = node.text.split('\n');
+            // 处理多行文本，实现自动换行
+            const originalLines = node.text.split('\n');
+            const wrappedLines = [];
+            
+            originalLines.forEach(line => {
+                // 如果行文本超过最大内容宽度，自动换行
+                if (ctx.measureText(line).width > maxContentWidth) {
+                    const lineWrappedLines = wrapText(line, maxContentWidth);
+                    wrappedLines.push(...lineWrappedLines);
+                } else {
+                    wrappedLines.push(line);
+                }
+            });
+            
+            // 计算每行的宽度和总行高
             let maxLineWidth = 0;
             let totalHeight = 0;
             
-            // 计算每行的宽度和总行高
-            lines.forEach(line => {
+            wrappedLines.forEach(line => {
                 const lineWidth = ctx.measureText(line).width;
                 maxLineWidth = Math.max(maxLineWidth, lineWidth);
                 totalHeight += fontHeight;
             });
             
-            // 设置节点宽度（考虑内边距）
-            node.width = Math.max(maxLineWidth + padding * 2, 100);
+            // 保存自动换行后的文本，供渲染时使用
+            node.wrappedText = wrappedLines;
+            
+            // 设置节点宽度（考虑内边距和最大宽度限制）
+            const calculatedWidth = Math.max(maxLineWidth + padding * 2, 100);
+            node.width = Math.min(calculatedWidth, maxNodeWidth);
             
             // 设置节点高度（考虑内边距和最小高度）
             node.height = Math.max(totalHeight + padding * 2, minNodeHeight);
@@ -2223,11 +2324,20 @@ class MindMap {
     editNodeText(node) {
         console.log('editNodeText called for node:', node.id, node.text);
         
-        // 如果有其他节点正在被编辑，先退出编辑状态
+        // 如果有其他节点正在被编辑，先退出编辑状态并保存文本
         if (this.currentEditingNode && this.currentEditingNode !== node) {
             const currentNode = this.currentEditingNode;
             const currentNodeGroup = document.getElementById(`node-${currentNode.id}`);
             if (currentNodeGroup) {
+                // 获取当前编辑的文本输入框
+                const textarea = currentNodeGroup.querySelector('.edit-foreign-object textarea');
+                
+                // 保存当前编辑的文本
+                if (textarea) {
+                    const newText = textarea.value.trim();
+                    this.updateNodeText(currentNode, newText);
+                }
+                
                 // 隐藏当前编辑的foreignObject
                 const currentEditFo = currentNodeGroup.querySelector('.edit-foreign-object');
                 if (currentEditFo) {
@@ -2384,7 +2494,7 @@ class MindMap {
             let maxLineWidth = 0;
             let totalHeight = 0;
             const lineHeight = parseInt(node.style.fontSize) * 1.4;
-            const padding = 20;
+            const padding = 15; // 与calculateNodeSizes函数保持一致
             
             lines.forEach(line => {
                 const lineWidth = ctx.measureText(line).width;
@@ -2392,16 +2502,26 @@ class MindMap {
                 totalHeight += lineHeight;
             });
             
+            // 记录节点的左侧端点位置
+            const leftPosition = node.x - node.width / 2;
+            
+            // 更新节点大小，与calculateNodeSizes函数保持一致
+            const newWidth = Math.max(maxLineWidth + padding * 2, 100);
+            const newHeight = Math.max(totalHeight + padding * 2, 45);
+            
             // 更新节点大小
-            node.width = Math.max(maxLineWidth + padding * 2, 100);
-            node.height = Math.max(totalHeight + padding * 2, 50);
+            node.width = newWidth;
+            node.height = newHeight;
+            
+            // 调整节点位置，使左侧端点保持不变
+            node.x = leftPosition + newWidth / 2;
             
             // 更新foreignObject大小
-            const textWidth = node.width - 20;
-            const textHeight = node.height - 20;
+            const textWidth = newWidth - 20;
+            const textHeight = newHeight - 20;
             
-            textInput.setAttribute('x', node.x - node.width / 2 + 10);
-            textInput.setAttribute('y', node.y - node.height / 2 + 10);
+            textInput.setAttribute('x', node.x - newWidth / 2 + 10);
+            textInput.setAttribute('y', node.y - newHeight / 2 + 10);
             textInput.setAttribute('width', textWidth);
             textInput.setAttribute('height', textHeight);
             
@@ -2526,7 +2646,10 @@ class MindMap {
         
         // 创建空节点
         const newNode = this.createNode('', newX, newY, parent);
-        this.selectNode(newNode);
+        // 保持选中原节点（父节点）
+        this.selectedNode = parent;
+        this.selectedNodes = [parent];
+        this.updateStylePanel();
         this.render();
     }
     
@@ -2616,9 +2739,32 @@ class MindMap {
             fontFamily: document.getElementById('fontFamily').value
         };
         
+        // 保存每个选中节点的左侧端点位置
+        const leftPositions = new Map();
+        this.selectedNodes.forEach(node => {
+            const leftPosition = node.x - node.width / 2;
+            leftPositions.set(node.id, leftPosition);
+        });
+        
         // 为所有选中的节点应用相同的样式
         this.selectedNodes.forEach(node => {
             node.updateStyle(newStyle);
+        });
+        
+        // 重新计算节点尺寸
+        this.calculateNodeSizes();
+        
+        // 调整节点位置，使左侧端点保持不变
+        this.selectedNodes.forEach(node => {
+            // 获取保存的左侧端点位置
+            const leftPosition = leftPositions.get(node.id);
+            
+            // 计算节点中心点的新位置，使左侧端点保持不变
+            const newWidth = node.width;
+            const newX = leftPosition + newWidth / 2;
+            
+            // 更新节点位置
+            node.x = newX;
         });
         
         this.render();
@@ -3724,6 +3870,12 @@ class MindMap {
             loadMapBtn.addEventListener('click', () => this.loadMap());
         }
         
+        // 自动布局按钮事件
+        const autoLayoutBtn = document.getElementById('autoLayout');
+        if (autoLayoutBtn) {
+            autoLayoutBtn.addEventListener('click', () => this.autoLayout());
+        }
+        
         // 自定义保存弹窗事件
         this.initSaveDialogListeners();
         
@@ -3818,7 +3970,7 @@ class MindMap {
         }
         
         // 初始化自定义颜色选择器
-        function initCustomColorPicker() {
+        function initCustomColorPicker(self) {
             var customColorPicker = document.getElementById('customColorPicker');
             var colorGradient = document.getElementById('colorGradient');
             var colorPicker = document.getElementById('colorPicker');
@@ -4175,7 +4327,7 @@ class MindMap {
         }
         
         // 初始化自定义颜色选择器
-        initCustomColorPicker();
+        initCustomColorPicker(self);
         
         // 画布点击事件（取消选择）
         this.canvas.addEventListener('click', (e) => {
@@ -4351,6 +4503,42 @@ class MindMap {
                 } else {
                     // 可以选择不显示提示，让用户知道需要先选中节点
                     // alert('请先选择一个节点！');
+                }
+            }
+            // 按'V'键创建父节点
+            else if (e.key === 'v' || e.key === 'V') {
+                // 如果正在编辑节点文本，不执行节点创建操作
+                if (this.isEditingNode) {
+                    return; // 让事件自然冒泡，由文本编辑框处理
+                }
+                e.preventDefault();
+                // 如果有选中节点，为选中节点添加父节点
+                if (this.selectedNode) {
+                    this.addParentNode(this.selectedNode);
+                }
+            }
+            // 按'B'键创建子节点
+            else if (e.key === 'b' || e.key === 'B') {
+                // 如果正在编辑节点文本，不执行节点创建操作
+                if (this.isEditingNode) {
+                    return; // 让事件自然冒泡，由文本编辑框处理
+                }
+                e.preventDefault();
+                // 如果有选中节点，为选中节点添加子节点
+                if (this.selectedNode) {
+                    this.addChildNode(this.selectedNode);
+                }
+            }
+            // 按'Insert'键进入编辑模式
+            else if (e.key === 'Insert') {
+                // 如果正在编辑节点文本，不执行任何操作
+                if (this.isEditingNode) {
+                    return; // 让事件自然冒泡，由文本编辑框处理
+                }
+                e.preventDefault();
+                // 如果有选中节点，进入编辑模式
+                if (this.selectedNode) {
+                    this.editNodeText(this.selectedNode);
                 }
             }
             // 复制功能 (Ctrl+C)
@@ -4851,11 +5039,11 @@ class MindMap {
         const finalViewportX = thumbnailOriginX + (visibleLeft - boundingBox.minX) * this.thumbnailScale;
         const finalViewportY = thumbnailOriginY + (visibleTop - boundingBox.minY) * this.thumbnailScale;
         
-        // 不再限制视口矩形的位置，因为缩放逻辑已经确保所有内容都能完整显示
-        // 这样可以保持视口矩形与节点的真实相对位置关系
-        
         // 创建视口矩形
         const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+        rect.setAttribute('fill', 'rgba(0, 0, 0, 0.2)');
+        rect.setAttribute('stroke', '#000000');
+        rect.setAttribute('stroke-width', '1');
         rect.setAttribute('x', finalViewportX);
         rect.setAttribute('y', finalViewportY);
         rect.setAttribute('width', scaledViewportWidth);
@@ -4863,6 +5051,518 @@ class MindMap {
         rect.setAttribute('class', 'thumbnail-viewport');
         
         this.thumbnailCanvas.appendChild(rect);
+    }
+    
+    // 自动布局功能 - 树叶逻辑
+    autoLayout() {
+        this.saveState();
+        this.calculateNodeSizes();
+        
+        // 获取所有叶子节点（没有子节点的节点）
+        const leafNodes = this.getLeafNodes();
+        
+        // 如果没有节点或只有一个节点且没有子节点，不需要布局
+        if (this.nodes.length === 0 || (this.nodes.length === 1 && !this.nodes[0].children.length)) {
+            return;
+        }
+        
+        // 计算每个节点的深度
+        const nodeDepths = this.calculateNodeDepths();
+        
+        // 按层级分组节点
+        const levelNodes = this.getNodesByLevel(nodeDepths);
+        
+        // 计算每个层级的X坐标
+        const levelXCoords = this.calculateLevelXCoords(levelNodes);
+        
+        // 计算叶子节点的Y坐标
+        const leafYCoords = this.calculateLeafYCoords(leafNodes);
+        
+        // 计算所有节点的位置
+        this.calculateNodePositions(this.rootNode || this.getRootNodes()[0], nodeDepths, levelXCoords, leafYCoords);
+        
+        // 渲染更新后的布局
+        this.render();
+    }
+    
+    // 获取所有叶子节点（没有子节点的节点）
+    getLeafNodes() {
+        return this.nodes.filter(node => node.children.length === 0);
+    }
+    
+    // 计算每个节点的深度
+    calculateNodeDepths() {
+        const nodeDepths = new Map();
+        const visited = new Set();
+        
+        // 首先确定初始节点（有最多连接的节点，作为思维的中心）
+        let initialNode = null;
+        let maxConnections = -1;
+        
+        this.nodes.forEach(node => {
+            const connections = node.parents.length + node.children.length;
+            if (connections > maxConnections) {
+                maxConnections = connections;
+                initialNode = node;
+            }
+        });
+        
+        // 如果没有找到初始节点，使用第一个节点
+        if (!initialNode && this.nodes.length > 0) {
+            initialNode = this.nodes[0];
+        }
+        
+        if (initialNode) {
+            // 正向思维：从初始节点向下处理子节点（正向深度）
+            const forwardDfs = (node, depth) => {
+                if (visited.has(node.id)) return;
+                visited.add(node.id);
+                
+                // 设置当前节点的深度（正数表示正向思维的分支）
+                nodeDepths.set(node.id, depth);
+                
+                // 递归处理子节点（深度增加）
+                node.children.forEach(child => {
+                    forwardDfs(child, depth + 1);
+                });
+            };
+            
+            // 反向思维：从初始节点向上处理父节点（反向深度）
+            const backwardDfs = (node, depth) => {
+                if (visited.has(node.id)) return;
+                visited.add(node.id);
+                
+                // 设置当前节点的深度（负数表示反向思维的根茎）
+                nodeDepths.set(node.id, depth);
+                
+                // 递归处理父节点（深度减少）
+                node.parents.forEach(parent => {
+                    backwardDfs(parent, depth - 1);
+                });
+            };
+            
+            // 设置初始节点深度为0（思维的中心）
+            nodeDepths.set(initialNode.id, 0);
+            visited.add(initialNode.id);
+            
+            // 从初始节点开始处理正向思维的子节点
+            initialNode.children.forEach(child => {
+                forwardDfs(child, 1);
+            });
+            
+            // 从初始节点开始处理反向思维的父节点
+            initialNode.parents.forEach(parent => {
+                backwardDfs(parent, -1);
+            });
+        }
+        
+        return nodeDepths;
+    }
+    
+    // 按层级分组节点
+    getNodesByLevel(nodeDepths) {
+        const levelNodes = new Map();
+        
+        this.nodes.forEach(node => {
+            const depth = nodeDepths.get(node.id);
+            if (!levelNodes.has(depth)) {
+                levelNodes.set(depth, []);
+            }
+            levelNodes.get(depth).push(node);
+        });
+        
+        return levelNodes;
+    }
+    
+    // 计算每个层级的X坐标
+    calculateLevelXCoords(levelNodes) {
+        const nodeXCoords = new Map(); // 存储每个节点的X坐标
+        const centerX = 200; // 中心节点的X坐标
+        const minHorizontalSpacing = 120; // 节点之间的最小水平间距
+        
+        // 按层级排序
+        const sortedLevels = Array.from(levelNodes.keys()).sort((a, b) => a - b);
+        
+        // 存储每个正向层级的最大结束X坐标
+        const levelMaxRightX = new Map();
+        // 存储每个反向层级的最小结束X坐标
+        const levelMinLeftX = new Map();
+        
+        // 设置中心节点（深度为0）的X坐标
+        if (levelNodes.has(0)) {
+            const centerNodes = levelNodes.get(0);
+            centerNodes.forEach(node => {
+                nodeXCoords.set(node.id, centerX);
+            });
+        }
+        
+        // 处理正向思维的节点（深度为正，向右分布）
+        const positiveLevels = sortedLevels.filter(level => level > 0);
+        positiveLevels.forEach((level) => {
+            const nodesInLevel = levelNodes.get(level);
+            
+            // 初始化当前层级的起始X坐标
+            let currentLevelStartX;
+            if (level === 1) {
+                // 第一正向层级从中心节点右边开始
+                currentLevelStartX = centerX + minHorizontalSpacing;
+            } else {
+                // 后续正向层级从上一层级的最大结束X坐标 + 水平间距开始
+                const prevLevel = level - 1;
+                const prevMaxRightX = levelMaxRightX.get(prevLevel) || centerX;
+                currentLevelStartX = prevMaxRightX + minHorizontalSpacing;
+            }
+            
+            // 计算当前层级的最大结束X坐标
+            let maxRightX = currentLevelStartX;
+            
+            // 为当前层级的每个节点分配X坐标
+            nodesInLevel.forEach(node => {
+                // 设置节点的中心X坐标
+                nodeXCoords.set(node.id, currentLevelStartX + node.width / 2);
+                
+                // 更新当前层级的最大结束X坐标
+                const nodeRightX = currentLevelStartX + node.width;
+                maxRightX = Math.max(maxRightX, nodeRightX);
+            });
+            
+            // 保存当前正向层级的最大结束X坐标
+            levelMaxRightX.set(level, maxRightX);
+        });
+        
+        // 处理反向思维的节点（深度为负，向左分布）
+        const negativeLevels = sortedLevels.filter(level => level < 0).sort((a, b) => b - a);
+        negativeLevels.forEach((level) => {
+            const nodesInLevel = levelNodes.get(level);
+            
+            // 初始化当前层级的起始X坐标
+            let currentLevelEndX;
+            if (level === -1) {
+                // 第一反向层级从中心节点左边开始
+                currentLevelEndX = centerX - minHorizontalSpacing;
+            } else {
+                // 后续反向层级从上一层级的最小结束X坐标 - 水平间距开始
+                const prevLevel = level + 1;
+                const prevMinLeftX = levelMinLeftX.get(prevLevel) || centerX;
+                currentLevelEndX = prevMinLeftX - minHorizontalSpacing;
+            }
+            
+            // 计算当前层级的起始X坐标
+            const currentLevelStartX = currentLevelEndX - Math.max(...nodesInLevel.map(node => node.width));
+            
+            // 计算当前层级的最小结束X坐标
+            let minLeftX = currentLevelStartX;
+            
+            // 为当前层级的每个节点分配X坐标
+            nodesInLevel.forEach(node => {
+                // 设置节点的中心X坐标
+                nodeXCoords.set(node.id, currentLevelStartX + node.width / 2);
+                
+                // 更新当前层级的最小结束X坐标
+                minLeftX = Math.min(minLeftX, currentLevelStartX);
+            });
+            
+            // 保存当前反向层级的最小结束X坐标
+            levelMinLeftX.set(level, minLeftX);
+        });
+        
+        return nodeXCoords;
+    }
+    
+    // 计算叶子节点的Y坐标
+    calculateLeafYCoords(leafNodes) {
+        const leafYCoords = new Map();
+        const baseY = 200;
+        const verticalEdgeSpacing = 20; // 节点边缘之间的垂直间距
+        
+        // 首先确定初始节点（思维的中心）
+        let initialNode = null;
+        let maxConnections = -1;
+        
+        this.nodes.forEach(node => {
+            const connections = node.parents.length + node.children.length;
+            if (connections > maxConnections) {
+                maxConnections = connections;
+                initialNode = node;
+            }
+        });
+        
+        // 如果没有找到初始节点，使用第一个节点
+        if (!initialNode && this.nodes.length > 0) {
+            initialNode = this.nodes[0];
+        }
+        
+        if (initialNode) {
+            // 正向思维：处理子节点分支的垂直分布
+            const visitedForward = new Set();
+            const orderedForwardLeafNodes = [];
+            
+            // 正向DFS：获取所有正向思维的叶子节点
+            const forwardDfs = (node) => {
+                if (visitedForward.has(node.id)) return;
+                visitedForward.add(node.id);
+                
+                if (node.children.length === 0) {
+                    orderedForwardLeafNodes.push(node);
+                } else {
+                    node.children.forEach(child => {
+                        forwardDfs(child);
+                    });
+                }
+            };
+            
+            // 从初始节点的所有子节点开始遍历正向思维的分支
+            initialNode.children.forEach(child => {
+                forwardDfs(child);
+            });
+            
+            // 分配正向思维叶子节点的Y坐标
+            let currentBottomYForward = baseY;
+            orderedForwardLeafNodes.forEach((node) => {
+                const nodeCenterY = currentBottomYForward + node.height / 2;
+                leafYCoords.set(node.id, nodeCenterY);
+                currentBottomYForward = currentBottomYForward + node.height + verticalEdgeSpacing;
+            });
+            
+            // 反向思维：处理父节点根茎的垂直分布
+            const visitedBackward = new Set();
+            
+            // 收集所有负向节点
+            const allBackwardNodes = new Set();
+            
+            // 找出所有负向节点
+            const findBackwardNodes = (node) => {
+                if (visitedBackward.has(node.id) || node === initialNode) return;
+                visitedBackward.add(node.id);
+                allBackwardNodes.add(node);
+                
+                // 递归处理父节点
+                node.parents.forEach(parent => {
+                    findBackwardNodes(parent);
+                });
+            };
+            
+            // 从初始节点的所有父节点开始查找负向节点
+            initialNode.parents.forEach(parent => {
+                findBackwardNodes(parent);
+            });
+            
+            // 清空visitedBackward，准备重新遍历
+            visitedBackward.clear();
+            
+            // 识别负向根节点：没有父节点的负向节点
+            const negativeRootNodes = Array.from(allBackwardNodes).filter(node => node.parents.length === 0);
+            
+            // 识别非根负向节点：有父节点的负向节点
+            const negativeNonRootNodes = Array.from(allBackwardNodes).filter(node => node.parents.length > 0);
+            
+            // 计算负向根节点的Y坐标
+            if (negativeRootNodes.length > 0) {
+                // 为负向根节点分配固定间距的Y坐标
+                // 计算根节点的基准Y坐标：基于其子节点的Y坐标平均值
+                let baseYRoot;
+                
+                // 收集所有负向根节点子节点的Y坐标
+                const childYs = [];
+                negativeRootNodes.forEach(node => {
+                    node.children.forEach(child => {
+                        if (leafYCoords.has(child.id)) {
+                            childYs.push(leafYCoords.get(child.id));
+                        } else if (child.y) {
+                            childYs.push(child.y);
+                        } else {
+                            // 使用默认Y坐标
+                            childYs.push(baseY + child.height / 2);
+                        }
+                    });
+                });
+                
+                if (childYs.length > 0) {
+                    // 计算子节点Y坐标的平均值作为根节点的基准Y坐标
+                    baseYRoot = childYs.reduce((sum, y) => sum + y, 0) / childYs.length;
+                } else {
+                    // 使用默认基准Y坐标
+                    baseYRoot = baseY + negativeRootNodes[0].height / 2;
+                }
+                
+                // 计算根节点的总高度和总间距
+                const totalHeight = negativeRootNodes.reduce((sum, node) => sum + node.height, 0);
+                const totalSpacing = (negativeRootNodes.length - 1) * verticalEdgeSpacing;
+                const totalRootHeight = totalHeight + totalSpacing;
+                
+                // 计算起始Y坐标，使所有根节点居中于基准Y坐标
+                let currentBottomY = baseYRoot - totalRootHeight / 2;
+                
+                // 为每个负向根节点分配Y坐标
+                negativeRootNodes.forEach(node => {
+                    const nodeCenterY = currentBottomY + node.height / 2;
+                    leafYCoords.set(node.id, nodeCenterY);
+                    currentBottomY = currentBottomY + node.height + verticalEdgeSpacing;
+                });
+            }
+            
+            // 计算负向节点的Y坐标
+            // 实现父节点优先遍历，让子节点的Y坐标成为父节点Y坐标的平均值
+            if (negativeRootNodes.length > 0 || negativeNonRootNodes.length > 0) {
+                // 创建一个包含所有负向节点的集合
+                const allNegativeNodes = new Set([...negativeRootNodes, ...negativeNonRootNodes]);
+                
+                // 使用DFS遍历负向节点，父节点优先
+                const dfsParentFirst = (node) => {
+                    if (visitedBackward.has(node.id)) return;
+                    visitedBackward.add(node.id);
+                    
+                    // 先处理当前节点（如果是负向根节点或已有父节点Y坐标）
+                    if (node.parents.length === 0) {
+                        // 负向根节点已经有Y坐标了，跳过
+                        return;
+                    }
+                    
+                    // 收集父节点的Y坐标
+                    const parentYs = [];
+                    node.parents.forEach(parent => {
+                        if (leafYCoords.has(parent.id)) {
+                            parentYs.push(leafYCoords.get(parent.id));
+                        }
+                    });
+                    
+                    // 如果所有父节点都有Y坐标，计算当前节点的Y坐标
+                    if (parentYs.length === node.parents.length && parentYs.length > 0) {
+                        // 子节点的Y坐标是父节点Y坐标的平均值
+                        const averageY = parentYs.reduce((sum, y) => sum + y, 0) / parentYs.length;
+                        leafYCoords.set(node.id, averageY);
+                        
+                        // 递归处理子节点
+                        node.children.forEach(child => {
+                            if (allNegativeNodes.has(child)) {
+                                dfsParentFirst(child);
+                            }
+                        });
+                    }
+                };
+                
+                // 首先处理所有负向根节点（已经分配了Y坐标）
+                // 然后从负向根节点开始，按父节点优先的顺序处理所有负向节点
+                negativeRootNodes.forEach(rootNode => {
+                    // 处理根节点的子节点
+                    rootNode.children.forEach(child => {
+                        if (allNegativeNodes.has(child)) {
+                            dfsParentFirst(child);
+                        }
+                    });
+                });
+                
+                // 再次遍历所有负向节点，确保所有节点都有Y坐标
+                // 处理可能的循环依赖或未处理的节点
+                allNegativeNodes.forEach(node => {
+                    if (!leafYCoords.has(node.id)) {
+                        // 如果节点没有Y坐标，尝试基于其父节点计算
+                        const parentYs = [];
+                        node.parents.forEach(parent => {
+                            if (leafYCoords.has(parent.id)) {
+                                parentYs.push(leafYCoords.get(parent.id));
+                            }
+                        });
+                        
+                        if (parentYs.length > 0) {
+                            const averageY = parentYs.reduce((sum, y) => sum + y, 0) / parentYs.length;
+                            leafYCoords.set(node.id, averageY);
+                        } else {
+                            // 使用默认Y坐标
+                            leafYCoords.set(node.id, baseY + node.height / 2);
+                        }
+                    }
+                });
+            }
+        }
+        
+        return leafYCoords;
+    }
+    
+    // 计算所有节点的位置
+    calculateNodePositions(rootNode, nodeDepths, nodeXCoords, leafYCoords) {
+        // 首先确定初始节点（思维的中心）
+        let initialNode = null;
+        let maxConnections = -1;
+        
+        this.nodes.forEach(node => {
+            const connections = node.parents.length + node.children.length;
+            if (connections > maxConnections) {
+                maxConnections = connections;
+                initialNode = node;
+            }
+        });
+        
+        // 如果没有找到初始节点，使用第一个节点
+        if (!initialNode && this.nodes.length > 0) {
+            initialNode = this.nodes[0];
+        }
+        
+        if (initialNode) {
+            // 设置初始节点的位置
+            initialNode.x = nodeXCoords.get(initialNode.id);
+            
+            // 初始节点的Y坐标基于其所有直接连接的节点的平均Y坐标
+            let initialY = 200; // 默认值
+            const connectedNodeYs = [];
+            
+            // 收集所有直接连接节点的Y坐标
+            [...initialNode.children, ...initialNode.parents].forEach(node => {
+                if (leafYCoords.has(node.id)) {
+                    // 如果节点在leafYCoords中（叶子节点或根茎节点），使用预计算的Y坐标
+                    connectedNodeYs.push(leafYCoords.get(node.id));
+                } else {
+                    // 否则使用节点当前的Y坐标（非叶子节点的临时值）
+                    connectedNodeYs.push(node.y);
+                }
+            });
+            
+            // 计算平均值
+            if (connectedNodeYs.length > 0) {
+                initialY = connectedNodeYs.reduce((sum, y) => sum + y, 0) / connectedNodeYs.length;
+            }
+            
+            initialNode.y = initialY;
+            
+            // 设置所有其他节点的位置
+            this.nodes.forEach(node => {
+                // 跳过初始节点，已经设置过了
+                if (node.id === initialNode.id) return;
+                
+                // 设置节点的X坐标
+                node.x = nodeXCoords.get(node.id);
+                
+                // 设置节点的Y坐标
+                if (leafYCoords.has(node.id)) {
+                    // 如果有预计算的Y坐标，则使用它（适用于所有叶子节点和根茎节点）
+                    node.y = leafYCoords.get(node.id);
+                } else {
+                    // 否则根据连接的节点计算Y坐标
+                    let averageY = initialY; // 默认使用初始节点的Y坐标
+                    
+                    const depth = nodeDepths.get(node.id);
+                    if (depth > 0) {
+                        // 正向思维节点：根据子节点计算Y坐标
+                        if (node.children.length > 0) {
+                            const childYs = node.children.map(child => child.y);
+                            if (childYs.length > 0) {
+                                averageY = childYs.reduce((sum, y) => sum + y, 0) / childYs.length;
+                            }
+                        }
+                    } else if (depth < 0) {
+                        // 反向思维节点：根据父节点计算Y坐标
+                        if (node.parents.length > 0) {
+                            const parentYs = node.parents.map(parent => parent.y);
+                            if (parentYs.length > 0) {
+                                averageY = parentYs.reduce((sum, y) => sum + y, 0) / parentYs.length;
+                            }
+                        }
+                    }
+                    
+                    node.y = averageY;
+                }
+            });
+        }
     }
     
     // 处理缩略图点击事件
