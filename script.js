@@ -262,6 +262,8 @@ class MindMap {
     createNode(text, x, y, parents = [], skipSaveState = false) {
         const node = new Node(this.nextNodeId++, "", x, y, parents);
         node.text = text || "";
+        node.width = 400; // 默认节点宽度设置为400px
+        node.height = 45; // 默认节点高度设置为45px
         this.nodes.push(node);
         
         const parentsArray = Array.isArray(parents) ? parents : [parents].filter(p => p !== null);
@@ -307,8 +309,8 @@ class MindMap {
         // 获取所有兄弟节点的编号
         const siblingNumbers = siblings.map(sibling => {
             const siblingText = sibling.nodeNumber;
-            // 提取父编号前缀
-            const prefix = parentNumber;
+            // 提取父编号前缀（带分隔符）
+            const prefix = parentNumber + ".";
             // 提取兄弟节点编号中父编号后的部分
             const suffix = siblingText.startsWith(prefix) ? siblingText.substring(prefix.length) : siblingText;
             return parseInt(suffix) || 0;
@@ -318,7 +320,8 @@ class MindMap {
         const maxNumber = siblingNumbers.length > 0 ? Math.max(...siblingNumbers) : 0;
         const newNumber = maxNumber + 1;
         
-        return `${parentNumber}${newNumber}`;
+        // 使用点号作为分隔符
+        return `${parentNumber}.${newNumber}`;
     }
     
     // 保存当前状态到历史记录
@@ -342,6 +345,8 @@ class MindMap {
             })),
             nextNodeId: this.nextNodeId,
             rootNodeId: this.rootNode ? this.rootNode.id : null,
+            // 保存连接线颜色
+            connectionColor: this.connectionColor,
             // 保存选中状态
             selectedNodeId: this.selectedNode ? this.selectedNode.id : null,
             selectedNodeIds: this.selectedNodes.map(node => node.id)
@@ -412,6 +417,17 @@ class MindMap {
             }
             // 设置样式
             node.style = nodeData.style;
+            // 设置节点宽度和高度（如果存在）
+            if (nodeData.width !== undefined && !isNaN(nodeData.width)) {
+                node.width = nodeData.width;
+            } else {
+                node.width = 400; // 默认节点宽度设置为400px
+            }
+            if (nodeData.height !== undefined && !isNaN(nodeData.height)) {
+                node.height = nodeData.height;
+            } else {
+                node.height = 45; // 默认节点高度设置为45px
+            }
             this.nodes.push(node);
             nodeMap.set(node.id, node);
         });
@@ -439,6 +455,16 @@ class MindMap {
         
         // 设置下一个节点ID
         this.nextNodeId = state.nextNodeId;
+        
+        // 恢复连接线颜色
+        if (state.connectionColor) {
+            this.connectionColor = state.connectionColor;
+            // 更新样式面板中的连接线颜色选择器
+            const connectionColorInput = document.getElementById('connectionColor');
+            if (connectionColorInput) {
+                connectionColorInput.value = state.connectionColor;
+            }
+        }
         
         // 恢复选中状态
         if (state.selectedNodeIds) {
@@ -621,10 +647,10 @@ class MindMap {
                             // 创建SVG text元素
                             const textElement = document.createElementNS('http://www.w3.org/2000/svg', 'text');
                             
-                            // 直接使用节点的中心位置作为文本位置
-                            textElement.setAttribute('x', node.x); // 文本水平中心与节点中心一致
+                            // 使用节点的左边界作为文本位置，保持左对齐
+                            textElement.setAttribute('x', node.x - node.width / 2 + 10); // 与编辑界面保持一致的左边距
                             textElement.setAttribute('y', node.y); // 文本垂直中心与节点中心一致
-                            textElement.setAttribute('text-anchor', 'middle');
+                            textElement.setAttribute('text-anchor', 'start');
                             textElement.setAttribute('dominant-baseline', 'middle');
                             
                             // 应用样式（确保所有样式都被正确应用）
@@ -633,8 +659,8 @@ class MindMap {
                             textElement.setAttribute('font-family', node.style.fontFamily || 'Arial, sans-serif');
                             textElement.setAttribute('line-height', '1.4');
                             
-                            // 处理多行文本
-                            const lines = node.text.split('\n');
+                            // 处理多行文本，优先使用自动换行后的文本
+                            const lines = node.wrappedText || node.text.split('\n');
                             const fontSize = parseFloat(node.style.fontSize || 14);
                             const lineHeight = fontSize * 1.4;
                             const totalTextHeight = lines.length * lineHeight;
@@ -643,7 +669,7 @@ class MindMap {
                             // 确保创建的tspan元素正确应用样式和位置
                             lines.forEach((line, index) => {
                                 const tspan = document.createElementNS('http://www.w3.org/2000/svg', 'tspan');
-                                tspan.setAttribute('x', node.x); // 确保每行都居中
+                                tspan.setAttribute('x', node.x - node.width / 2 + 10); // 确保每行都左对齐
                                 tspan.setAttribute('y', node.y + yOffset + index * lineHeight);
                                 tspan.textContent = line;
                                 // 确保tspan继承文本元素的样式
@@ -925,13 +951,17 @@ class MindMap {
         // 根据节点实际尺寸计算合适的距离，保持美观
         const spacing = 50; // 节点之间的间距
         const estimatedNodeHeight = 50; // 估计的新节点高度
-        const estimatedNodeWidth = 100; // 估计的新节点宽度
+        const defaultNodeWidth = 400; // 默认节点宽度设置为400px
+        const horizontalSpacing = 108; // 固定的水平间距
         
         let newX, newY;
         
         if (targetNode.parents.length === 0) {
-            // 第一个父节点，放在目标节点左侧，距离为默认节点宽度的3倍
-            newX = targetNode.x - targetNode.width / 2 - estimatedNodeWidth * 3 - estimatedNodeWidth / 2;
+            // 第一个父节点，放在目标节点左侧，保持108px的水平间距
+            // 计算第一个父节点的右端点位置：目标节点左端点 - 水平间距
+            const firstParentRight = targetNode.x - targetNode.width / 2 - horizontalSpacing;
+            // 节点的X坐标是中心位置，所以需要减去宽度的一半
+            newX = firstParentRight - defaultNodeWidth / 2;
             newY = targetNode.y; // 与目标节点保持同一水平中心线
         } else {
             // 不是第一个父节点，找到最下方的父节点，在其下方添加
@@ -942,7 +972,11 @@ class MindMap {
             }, targetNode.parents[0]); // 提供初始值
             
             const bottommostBounds = bottommostParent.getNodeBounds();
-            newX = bottommostParent.x; // 与最下方父节点保持同一垂直线
+            // 找到第一个父节点，使用其右端点位置作为基准，确保所有父节点右端点对齐
+            const firstParent = targetNode.parents[0];
+            const firstParentRight = firstParent.x + firstParent.width / 2;
+            // 节点的X坐标是中心位置，所以需要减去宽度的一半
+            newX = firstParentRight - defaultNodeWidth / 2;
             newY = bottommostBounds.bottom + spacing + estimatedNodeHeight / 2;
         }
         
@@ -953,6 +987,8 @@ class MindMap {
         const newNode = this.createNode("", newX, newY, [], true); // 跳过初始saveState
         // 设置节点编号
         newNode.nodeNumber = newNumber;
+        newNode.width = 400; // 设置默认节点宽度为400px
+        newNode.height = 45; // 设置默认高度
         
         // 添加目标节点到新节点的子节点列表
         newNode.addChild(targetNode);
@@ -981,8 +1017,24 @@ class MindMap {
     }
     
     selectNode(node) {
-        this.selectedNode = node;
-        this.selectedNodes = node ? [node] : [];
+        if (this.isCtrlPressed) {
+            // 按住CTRL键时，进行多选操作
+            if (this.selectedNodes.includes(node)) {
+                // 如果节点已经被选中，取消选择
+                this.selectedNodes = this.selectedNodes.filter(n => n.id !== node.id);
+                // 更新selectedNode为第一个选中的节点或null
+                this.selectedNode = this.selectedNodes.length > 0 ? this.selectedNodes[0] : null;
+            } else {
+                // 如果节点未被选中，添加到选中列表
+                this.selectedNodes.push(node);
+                // 更新selectedNode为当前点击的节点
+                this.selectedNode = node;
+            }
+        } else {
+            // 未按住CTRL键时，保持原有行为：单选
+            this.selectedNode = node;
+            this.selectedNodes = node ? [node] : [];
+        }
         this.updateStylePanel();
         this.render();
     }
@@ -1288,8 +1340,8 @@ class MindMap {
         const lineHeight = 1.4; // 行高倍数
         const padding = 15; // 节点内边距
         const minNodeHeight = 45; // 最小节点高度
-        const maxNodeWidth = 400; // 最大节点宽度（限制为400像素）
-        const maxContentWidth = maxNodeWidth - padding * 2; // 节点内容的最大宽度
+        const fixedNodeWidth = 400; // 固定节点宽度（设置为400像素）
+        const contentWidth = fixedNodeWidth - padding * 2; // 节点内容的宽度
         
         // 文本自动换行函数
         const wrapText = (text, maxWidth) => {
@@ -1339,6 +1391,25 @@ class MindMap {
         };
         
         this.nodes.forEach(node => {
+            // 检查节点是否为根节点（0号节点）
+            const isRootNode = node.nodeNumber === "0";
+            
+            // 检查节点是否为父节点（有子节点）
+            const isParentNode = node.children.length > 0 && !isRootNode;
+            
+            // 记录节点的端点位置或中心位置
+            let positionToMaintain;
+            if (isRootNode) {
+                // 对于根节点，保持中心位置不变
+                positionToMaintain = node.x;
+            } else if (isParentNode) {
+                // 对于父节点，保持右端点位置不变
+                positionToMaintain = node.x + node.width / 2;
+            } else {
+                // 对于子节点，保持左端点位置不变
+                positionToMaintain = node.x - node.width / 2;
+            }
+            
             ctx.font = `${node.style.fontSize}px ${node.style.fontFamily}`;
             const fontHeight = parseInt(node.style.fontSize) * lineHeight;
             
@@ -1347,34 +1418,48 @@ class MindMap {
             const wrappedLines = [];
             
             originalLines.forEach(line => {
-                // 如果行文本超过最大内容宽度，自动换行
-                if (ctx.measureText(line).width > maxContentWidth) {
-                    const lineWrappedLines = wrapText(line, maxContentWidth);
+                // 如果行文本超过内容宽度，自动换行
+                if (ctx.measureText(line).width > contentWidth) {
+                    const lineWrappedLines = wrapText(line, contentWidth);
                     wrappedLines.push(...lineWrappedLines);
                 } else {
                     wrappedLines.push(line);
                 }
             });
             
-            // 计算每行的宽度和总行高
-            let maxLineWidth = 0;
+            // 计算总行高
             let totalHeight = 0;
             
             wrappedLines.forEach(line => {
-                const lineWidth = ctx.measureText(line).width;
-                maxLineWidth = Math.max(maxLineWidth, lineWidth);
                 totalHeight += fontHeight;
             });
             
             // 保存自动换行后的文本，供渲染时使用
             node.wrappedText = wrappedLines;
             
-            // 设置节点宽度（考虑内边距和最大宽度限制）
-            const calculatedWidth = Math.max(maxLineWidth + padding * 2, 100);
-            node.width = Math.min(calculatedWidth, maxNodeWidth);
+            // 设置节点宽度（固定为400px）
+            const newWidth = fixedNodeWidth;
             
             // 设置节点高度（考虑内边距和最小高度）
-            node.height = Math.max(totalHeight + padding * 2, minNodeHeight);
+            const newHeight = Math.max(totalHeight + padding * 2, minNodeHeight);
+            
+            // 更新节点尺寸
+            node.width = newWidth;
+            node.height = newHeight;
+            
+            // 调整节点位置，保持相应的位置不变
+            if (isRootNode) {
+                // 对于根节点，保持中心位置不变
+                // 根节点固定在中心(0,0)
+                node.x = 0;
+                node.y = 0;
+            } else if (isParentNode) {
+                // 对于父节点，保持右端点位置不变
+                node.x = positionToMaintain - newWidth / 2;
+            } else {
+                // 对于子节点，保持左端点位置不变
+                node.x = positionToMaintain + newWidth / 2;
+            }
         });
     }
     
@@ -2546,6 +2631,53 @@ class MindMap {
             }
         };
         
+        // 文本自动换行函数
+        const wrapText = (text, maxWidth, ctx) => {
+            const lines = [];
+            
+            // 检查是否包含空格
+            if (text.includes(' ')) {
+                // 基于单词的换行
+                const words = text.split(' ');
+                let currentLine = words[0];
+                
+                for (let i = 1; i < words.length; i++) {
+                    const testLine = currentLine + ' ' + words[i];
+                    const testWidth = ctx.measureText(testLine).width;
+                    
+                    if (testWidth <= maxWidth) {
+                        currentLine = testLine;
+                    } else {
+                        lines.push(currentLine);
+                        currentLine = words[i];
+                    }
+                }
+                lines.push(currentLine);
+            } else {
+                // 基于字符的换行（处理无空格长文本）
+                let currentLine = '';
+                
+                for (let i = 0; i < text.length; i++) {
+                    const testLine = currentLine + text[i];
+                    const testWidth = ctx.measureText(testLine).width;
+                    
+                    if (testWidth <= maxWidth) {
+                        currentLine = testLine;
+                    } else {
+                        if (currentLine) {
+                            lines.push(currentLine);
+                        }
+                        currentLine = text[i];
+                    }
+                }
+                if (currentLine) {
+                    lines.push(currentLine);
+                }
+            }
+            
+            return lines;
+        };
+        
         // 自动调整文本区域和节点大小
         const autoResize = () => {
             // 调整textarea高度
@@ -2556,31 +2688,69 @@ class MindMap {
             const ctx = document.createElement('canvas').getContext('2d');
             ctx.font = `${node.style.fontSize}px ${node.style.fontFamily}`;
             
-            const lines = textarea.value.split('\n');
-            let maxLineWidth = 0;
-            let totalHeight = 0;
+            const originalLines = textarea.value.split('\n');
+            const wrappedLines = [];
             const lineHeight = parseInt(node.style.fontSize) * 1.4;
             const padding = 15; // 与calculateNodeSizes函数保持一致
+            const fixedNodeWidth = 400; // 固定节点宽度为400px
+            const contentWidth = fixedNodeWidth - padding * 2; // 节点内容的宽度
             
-            lines.forEach(line => {
-                const lineWidth = ctx.measureText(line).width;
-                maxLineWidth = Math.max(maxLineWidth, lineWidth);
+            // 处理多行文本，实现自动换行
+            originalLines.forEach(line => {
+                // 如果行文本超过内容宽度，自动换行
+                if (ctx.measureText(line).width > contentWidth) {
+                    const lineWrappedLines = wrapText(line, contentWidth, ctx);
+                    wrappedLines.push(...lineWrappedLines);
+                } else {
+                    wrappedLines.push(line);
+                }
+            });
+            
+            // 计算总行高
+            let totalHeight = 0;
+            wrappedLines.forEach(line => {
                 totalHeight += lineHeight;
             });
             
-            // 记录节点的左侧端点位置
-            const leftPosition = node.x - node.width / 2;
+            // 检查节点是否为根节点（0号节点）
+            const isRootNode = node.nodeNumber === "0";
             
-            // 更新节点大小，与calculateNodeSizes函数保持一致
-            const newWidth = Math.max(maxLineWidth + padding * 2, 100);
+            // 检查节点是否为父节点（有子节点）
+            const isParentNode = node.children.length > 0 && !isRootNode;
+            
+            // 记录节点的端点位置或中心位置
+            let positionToMaintain;
+            if (isRootNode) {
+                // 对于根节点，保持中心位置不变
+                positionToMaintain = node.x;
+            } else if (isParentNode) {
+                // 对于父节点，保持右端点位置不变
+                positionToMaintain = node.x + node.width / 2;
+            } else {
+                // 对于子节点，保持左端点位置不变
+                positionToMaintain = node.x - node.width / 2;
+            }
+            
+            // 更新节点大小，宽度固定为400px
+            const newWidth = fixedNodeWidth;
             const newHeight = Math.max(totalHeight + padding * 2, 45);
             
             // 更新节点大小
             node.width = newWidth;
             node.height = newHeight;
             
-            // 调整节点位置，使左侧端点保持不变
-            node.x = leftPosition + newWidth / 2;
+            // 调整节点位置，保持相应的位置不变
+            if (isRootNode) {
+                // 对于根节点，保持中心位置不变
+                node.x = 0;
+                node.y = 0;
+            } else if (isParentNode) {
+                // 对于父节点，保持右端点位置不变
+                node.x = positionToMaintain - newWidth / 2;
+            } else {
+                // 对于子节点，保持左端点位置不变
+                node.x = positionToMaintain + newWidth / 2;
+            }
             
             // 更新foreignObject大小
             const textWidth = newWidth - 20;
@@ -2689,13 +2859,17 @@ class MindMap {
         // 根据节点实际尺寸计算合适的距离，保持美观
         const spacing = 50; // 节点之间的间距
         const estimatedNodeHeight = 50; // 估计的新节点高度
-        const estimatedNodeWidth = 100; // 估计的新节点宽度
+        const defaultNodeWidth = 400; // 默认节点宽度设置为400px
+        const horizontalSpacing = 108; // 固定的水平间距
         
         let newX, newY;
         
         if (parent.children.length === 0) {
-            // 第一个子节点，放在父节点右侧，距离为默认节点宽度的3倍
-            newX = parent.x + parent.width / 2 + estimatedNodeWidth * 3 + estimatedNodeWidth / 2;
+            // 第一个子节点，放在父节点右侧，保持108px的水平间距
+            // 计算第一个子节点的左端点位置：父节点右端点 + 水平间距
+            const firstChildLeft = parent.x + parent.width / 2 + horizontalSpacing;
+            // 节点的X坐标是中心位置，所以需要加上宽度的一半
+            newX = firstChildLeft + defaultNodeWidth / 2;
             newY = parent.y; // 与父节点保持同一水平中心线
         } else {
             // 不是第一个子节点，找到最下方的子节点，在其下方添加
@@ -2706,7 +2880,11 @@ class MindMap {
             }, parent.children[0]); // 提供初始值
             
             const bottommostBounds = bottommostChild.getNodeBounds();
-            newX = bottommostChild.x; // 与最下方子节点保持同一垂直线
+            // 找到第一个子节点，使用其左端点位置作为基准，确保所有子节点左端点对齐
+            const firstChild = parent.children[0];
+            const firstChildLeft = firstChild.x - firstChild.width / 2;
+            // 节点的X坐标是中心位置，所以需要加上宽度的一半
+            newX = firstChildLeft + defaultNodeWidth / 2;
             newY = bottommostBounds.bottom + spacing + estimatedNodeHeight / 2;
         }
         
@@ -2717,6 +2895,8 @@ class MindMap {
         const newNode = this.createNode("", newX, newY, parent);
         // 设置节点编号
         newNode.nodeNumber = newNumber;
+        newNode.width = 400; // 设置默认节点宽度为400px
+        newNode.height = 45; // 设置默认高度
         // 保持选中原节点（父节点）
         this.selectedNode = parent;
         this.selectedNodes = [parent];
@@ -2751,58 +2931,19 @@ class MindMap {
             document.getElementById('fontSize').value = node.style.fontSize;
             document.getElementById('fontFamily').value = node.style.fontFamily;
         } else {
-            // 多个节点选中，检查是否所有节点的样式属性相同
-            // 节点颜色
-            const nodeColors = new Set(this.selectedNodes.map(node => node.style.nodeColor));
-            if (nodeColors.size === 1) {
-                document.getElementById('nodeColor').value = this.selectedNodes[0].style.nodeColor;
-            } else {
-                // 如果颜色不同，不设置值（保持当前值或默认值）
-                // 这里可以选择显示空值或第一个节点的值
-                document.getElementById('nodeColor').value = this.selectedNodes[0].style.nodeColor;
-            }
-            
-            // 边框颜色
-            const borderColors = new Set(this.selectedNodes.map(node => node.style.borderColor));
-            if (borderColors.size === 1) {
-                document.getElementById('borderColor').value = this.selectedNodes[0].style.borderColor;
-            } else {
-                document.getElementById('borderColor').value = this.selectedNodes[0].style.borderColor;
-            }
-            
-            // 字体颜色
-            const fontColors = new Set(this.selectedNodes.map(node => node.style.fontColor));
-            if (fontColors.size === 1) {
-                document.getElementById('fontColor').value = this.selectedNodes[0].style.fontColor;
-            } else {
-                document.getElementById('fontColor').value = this.selectedNodes[0].style.fontColor;
-            }
-            
-            // 字体大小
-            const fontSizes = new Set(this.selectedNodes.map(node => node.style.fontSize));
-            if (fontSizes.size === 1) {
-                document.getElementById('fontSize').value = this.selectedNodes[0].style.fontSize;
-            } else {
-                document.getElementById('fontSize').value = this.selectedNodes[0].style.fontSize;
-            }
-            
-            // 字体
-            const fontFamilies = new Set(this.selectedNodes.map(node => node.style.fontFamily));
-            if (fontFamilies.size === 1) {
-                document.getElementById('fontFamily').value = this.selectedNodes[0].style.fontFamily;
-            } else {
-                document.getElementById('fontFamily').value = this.selectedNodes[0].style.fontFamily;
-            }
+            // 多个节点选中，保持样式面板的当前值不变
+            // 这样，当用户修改某个样式属性时，只会修改该属性，不会影响其他属性
         }
     }
     
-    updateNodeStyle() {
+    updateNodeStyle(updatedProperties) {
         if (this.selectedNodes.length === 0) return;
         
         // 保存状态到历史记录
         this.saveState();
         
-        const newStyle = {
+        // 获取样式面板中的样式属性值
+        const stylePanelValues = {
             nodeColor: document.getElementById('nodeColor').value,
             borderColor: document.getElementById('borderColor').value,
             fontColor: document.getElementById('fontColor').value,
@@ -2817,9 +2958,29 @@ class MindMap {
             leftPositions.set(node.id, leftPosition);
         });
         
-        // 为所有选中的节点应用相同的样式
+        // 为所有选中的节点应用样式，只更新用户实际修改的属性
         this.selectedNodes.forEach(node => {
-            node.updateStyle(newStyle);
+            // 创建一个新的样式对象，包含节点原来的所有样式属性
+            const updatedStyle = { ...node.style };
+            
+            // 只更新指定的属性
+            if (updatedProperties.includes('nodeColor') && stylePanelValues.nodeColor !== node.style.nodeColor) {
+                updatedStyle.nodeColor = stylePanelValues.nodeColor;
+            }
+            if (updatedProperties.includes('borderColor') && stylePanelValues.borderColor !== node.style.borderColor) {
+                updatedStyle.borderColor = stylePanelValues.borderColor;
+            }
+            if (updatedProperties.includes('fontColor') && stylePanelValues.fontColor !== node.style.fontColor) {
+                updatedStyle.fontColor = stylePanelValues.fontColor;
+            }
+            if (updatedProperties.includes('fontSize') && stylePanelValues.fontSize !== node.style.fontSize) {
+                updatedStyle.fontSize = stylePanelValues.fontSize;
+            }
+            if (updatedProperties.includes('fontFamily') && stylePanelValues.fontFamily !== node.style.fontFamily) {
+                updatedStyle.fontFamily = stylePanelValues.fontFamily;
+            }
+            
+            node.updateStyle(updatedStyle);
         });
         
         // 重新计算节点尺寸
@@ -2877,7 +3038,8 @@ class MindMap {
                             // 只保存父节点ID，避免循环引用
                             parents: node.parents.map(parent => ({ id: parent.id }))
                         })),
-                        nextNodeId: this.nextNodeId
+                        nextNodeId: this.nextNodeId,
+                        connectionColor: this.connectionColor
                     };
                     
                     content = JSON.stringify(mapData, null, 2);
@@ -2909,10 +3071,10 @@ class MindMap {
                                 // 创建SVG text元素
                                 const textElement = document.createElementNS('http://www.w3.org/2000/svg', 'text');
                                 
-                                // 直接使用节点的中心位置作为文本位置
-                                textElement.setAttribute('x', node.x);
-                                textElement.setAttribute('y', node.y);
-                                textElement.setAttribute('text-anchor', 'middle');
+                                // 使用节点的左边界作为文本位置，保持左对齐
+                                textElement.setAttribute('x', node.x - node.width / 2 + 10); // 与编辑界面保持一致的左边距
+                                textElement.setAttribute('y', node.y); // 文本垂直中心与节点中心一致
+                                textElement.setAttribute('text-anchor', 'start');
                                 textElement.setAttribute('dominant-baseline', 'middle');
                                 
                                 // 应用样式（确保所有样式都被正确应用）
@@ -2921,8 +3083,8 @@ class MindMap {
                                 textElement.setAttribute('font-family', node.style.fontFamily || 'Arial, sans-serif');
                                 textElement.setAttribute('line-height', '1.4');
                                 
-                                // 处理多行文本
-                                const lines = node.text.split('\n');
+                                // 处理多行文本，优先使用自动换行后的文本
+                                const lines = node.wrappedText || node.text.split('\n');
                                 const fontSize = parseFloat(node.style.fontSize || 14);
                                 const lineHeight = fontSize * 1.4;
                                 const totalTextHeight = lines.length * lineHeight;
@@ -2931,7 +3093,7 @@ class MindMap {
                                 // 确保创建的tspan元素正确应用样式和位置
                                 lines.forEach((line, index) => {
                                     const tspan = document.createElementNS('http://www.w3.org/2000/svg', 'tspan');
-                                    tspan.setAttribute('x', node.x);
+                                    tspan.setAttribute('x', node.x - node.width / 2 + 10); // 确保每行都左对齐
                                     tspan.setAttribute('y', node.y + yOffset + index * lineHeight);
                                     tspan.textContent = line;
                                     // 确保tspan继承文本元素的样式
@@ -3118,10 +3280,10 @@ class MindMap {
                                 // 创建SVG text元素
                                 const textElement = document.createElementNS('http://www.w3.org/2000/svg', 'text');
                                 
-                                // 直接使用节点的中心位置作为文本位置
-                                textElement.setAttribute('x', node.x); // 文本水平中心与节点中心一致
+                                // 使用节点的左边界作为文本位置，保持左对齐
+                                textElement.setAttribute('x', node.x - node.width / 2 + 10); // 与编辑界面保持一致的左边距
                                 textElement.setAttribute('y', node.y); // 文本垂直中心与节点中心一致
-                                textElement.setAttribute('text-anchor', 'middle');
+                                textElement.setAttribute('text-anchor', 'start');
                                 textElement.setAttribute('dominant-baseline', 'middle');
                                 
                                 // 应用样式（确保所有样式都被正确应用）
@@ -3130,8 +3292,8 @@ class MindMap {
                                 textElement.setAttribute('font-family', node.style.fontFamily || 'Arial, sans-serif');
                                 textElement.setAttribute('line-height', '1.4');
                                 
-                                // 处理多行文本
-                                const lines = node.text.split('\n');
+                                // 处理多行文本，优先使用自动换行后的文本
+                                const lines = node.wrappedText || node.text.split('\n');
                                 const fontSize = parseFloat(node.style.fontSize || 14);
                                 const lineHeight = fontSize * 1.4;
                                 const totalTextHeight = lines.length * lineHeight;
@@ -3140,7 +3302,7 @@ class MindMap {
                                 // 确保创建的tspan元素正确应用样式和位置
                                 lines.forEach((line, index) => {
                                     const tspan = document.createElementNS('http://www.w3.org/2000/svg', 'tspan');
-                                    tspan.setAttribute('x', node.x); // 确保每行都居中
+                                    tspan.setAttribute('x', node.x - node.width / 2 + 10); // 确保每行都左对齐
                                     tspan.setAttribute('y', node.y + yOffset + index * lineHeight);
                                     tspan.textContent = line;
                                     // 确保tspan继承文本元素的样式
@@ -3473,6 +3635,17 @@ class MindMap {
                     });
                     
                     this.nextNodeId = mapData.nextNodeId;
+                    
+                    // 加载连接线颜色
+                    if (mapData.connectionColor) {
+                        this.connectionColor = mapData.connectionColor;
+                        // 更新样式面板中的连接线颜色选择器
+                        const connectionColorInput = document.getElementById('connectionColor');
+                        if (connectionColorInput) {
+                            connectionColorInput.value = mapData.connectionColor;
+                        }
+                    }
+                    
                     this.render();
                     
 
@@ -3964,7 +4137,7 @@ class MindMap {
                     });
                 } else {
                     element.addEventListener('change', function() {
-                        self.updateNodeStyle();
+                        self.updateNodeStyle([id]);
                     });
                 }
                 
@@ -3976,7 +4149,7 @@ class MindMap {
                         var delta = e.deltaY > 0 ? -1 : 1; // 向上滚动增大，向下滚动减小
                         var newValue = Math.max(8, Math.min(36, currentValue + delta));
                         element.value = newValue;
-                        self.updateNodeStyle();
+                        self.updateNodeStyle(['fontSize']);
                     });
                 }
                 
@@ -3989,7 +4162,7 @@ class MindMap {
                         var delta = e.deltaY > 0 ? 1 : -1; // 向上滚动选择上一个字体，向下滚动选择下一个字体
                         var newIndex = (currentIndex + delta + options.length) % options.length;
                         element.selectedIndex = newIndex;
-                        self.updateNodeStyle();
+                        self.updateNodeStyle(['fontFamily']);
                     });
                 }
             }
@@ -4014,7 +4187,7 @@ class MindMap {
                     if (targetId === 'connectionColor') {
                         self.updateConnectionColor();
                     } else {
-                        self.updateNodeStyle();
+                        self.updateNodeStyle([targetId]);
                     }
                 });
             });
@@ -4272,7 +4445,7 @@ class MindMap {
                     if (targetId === 'connectionColor') {
                         self.updateConnectionColor();
                     } else {
-                        self.updateNodeStyle();
+                        self.updateNodeStyle([targetId]);
                     }
                 }
             }
@@ -5490,15 +5663,16 @@ class MindMap {
         
         // 遍历所有节点，计算每个节点的级别数
         this.nodes.forEach(node => {
-            // 使用与generateVirtualNumber相同的正则表达式处理负节点编号
-            const level = node.nodeNumber.split(/(?<!^-)(?=\d)/).length;
+            // 处理负节点编号，去除负号后按点号分割
+            const nodeNumber = node.nodeNumber.startsWith('-') ? node.nodeNumber.slice(1) : node.nodeNumber;
+            const level = nodeNumber.split('.').length;
             if (level > maxLevel) {
                 maxLevel = level;
             }
         });
         
         // 树的最大级别数应该是所有节点的级别数加1，这样虚拟叶子节点才能正确地生成
-        // 例如，对于"30"节点（2级），需要生成"300"（3级）作为虚拟叶子节点
+        // 例如，对于"3.0"节点（2级），需要生成"3.0.0"（3级）作为虚拟叶子节点
         return maxLevel + 1;
     }
     
@@ -5506,25 +5680,28 @@ class MindMap {
     generateVirtualNumber(node, maxLevel) {
         const nodeText = node.nodeNumber;
         
-        // 虚拟叶子节点是按级数在后面加一个'0'
+        // 虚拟叶子节点是按级数在后面加".0"
         // 无论节点是否是叶子节点，都需要生成完整的虚拟路径到树的最大级别数
-        // 例如："1" → "10" → "100" → "1000"
-        // "10" → "100" → "1000"
-        // "110" → "1100"
-        // "2" → "20" → "200" → "2000"
+        // 例如："1" → "1.0" → "1.0.0"
+        // "10" → "10.0" → "10.0.0"
+        // "-10" → "-10.0" → "-10.0.0"
+        // "2.1" → "2.1.0"
         
-        // 生成完整的虚拟路径
-        let virtualNumber = nodeText;
+        // 处理负节点编号
+        const isNegative = nodeText.startsWith('-');
+        let baseNumber = isNegative ? nodeText.slice(1) : nodeText;
         
-        // 计算当前节点的级数（数字段数量）
-        const currentLevel = nodeText.split(/(?<!^-)(?=\d)/).length;
+        // 按点号分割计算当前级数
+        const parts = baseNumber.split('.');
+        const currentLevel = parts.length;
         
-        // 为缺失的级别添加虚拟编号，直到树的最大级别数
+        // 为缺失的级别添加".0"，直到树的最大级别数
         for (let i = currentLevel; i < maxLevel; i++) {
-            virtualNumber += '0';
+            baseNumber += '.0';
         }
         
-        return virtualNumber;
+        // 重新添加负号
+        return isNegative ? '-' + baseNumber : baseNumber;
     }
     
     // 计算叶子节点的Y坐标
@@ -5675,34 +5852,25 @@ class MindMap {
             return;
         }
         
-        // 只有在处理反向思维节点时才重新设置Y坐标
-        if (isReverse) {
-            // 按节点编号自然排序
-            nodesToProcess.sort((a, b) => {
-                // 使用自然排序，确保1, 21, 22, 3这样的序列按正确顺序排列
-                return a.text.localeCompare(b.text, undefined, { numeric: true, sensitivity: 'base' });
-            });
+        // 对节点进行排序
+        nodesToProcess.sort((a, b) => {
+            // 使用自然排序，确保1, 21, 22, 3这样的序列按正确顺序排列
+            return a.text.localeCompare(b.text, undefined, { numeric: true, sensitivity: 'base' });
+        });
+        
+        // 计算子节点分布
+        const totalHeight = (nodesToProcess.length - 1) * unitSpacing;
+        const startY = parentY - totalHeight / 2;
+        
+        // 设置子节点的Y坐标
+        nodesToProcess.forEach((child, index) => {
+            const y = startY + index * unitSpacing;
+            child.y = y;
+            leafYCoords.set(child.id, y);
             
-            // 计算子节点分布
-            const totalHeight = (nodesToProcess.length - 1) * unitSpacing;
-            const startY = parentY - totalHeight / 2;
-            
-            // 设置子节点的Y坐标
-            nodesToProcess.forEach((child, index) => {
-                const y = startY + index * unitSpacing;
-                child.y = y;
-                leafYCoords.set(child.id, y);
-                
-                // 递归处理子节点
-                this.calculateBranchYCoords(child, leafYCoords, y, unitSpacing, isReverse);
-            });
-        } else {
-            // 处理正向思维节点时，不重新设置Y坐标，只递归处理子节点
-            nodesToProcess.forEach(child => {
-                // 递归处理子节点，但不修改Y坐标
-                this.calculateBranchYCoords(child, leafYCoords, child.y, unitSpacing, isReverse);
-            });
-        }
+            // 递归处理子节点
+            this.calculateBranchYCoords(child, leafYCoords, y, unitSpacing, isReverse);
+        });
     }
     
     // 计算右侧节点位置（正向节点）
@@ -5720,9 +5888,10 @@ class MindMap {
                 // 中心节点深度为0
                 nodeDepths.set(node.id, 0);
             } else {
-                // 其他节点根据编号的位数计算深度
-                // 例如：1 → 深度1, 21 → 深度2, 221 → 深度3
-                const level = node.nodeNumber.split(/(?<!^-)(?=\d)/).length;
+                // 其他节点根据编号的点号分隔计算深度
+                // 例如：1 → 深度1, 2.1 → 深度2, 2.2.1 → 深度3
+                const nodeNumber = node.nodeNumber.startsWith('-') ? node.nodeNumber.slice(1) : node.nodeNumber;
+                const level = nodeNumber.split('.').length;
                 nodeDepths.set(node.id, level);
             }
         });
@@ -5814,7 +5983,8 @@ class MindMap {
             // 计算树的最大级别数
             let maxLevel = 1;
             rightNodes.forEach(node => {
-                const level = node.nodeNumber.split(/(?<!^-)(?=\d)/).length;
+                const nodeNumber = node.nodeNumber.startsWith('-') ? node.nodeNumber.slice(1) : node.nodeNumber;
+                const level = nodeNumber.split('.').length;
                 if (level > maxLevel) {
                     maxLevel = level;
                 }
@@ -5827,17 +5997,27 @@ class MindMap {
                 let virtualA = a.nodeNumber;
                 let virtualB = b.nodeNumber;
                 
+                // 处理负节点编号
+                const isNegativeA = virtualA.startsWith('-');
+                const isNegativeB = virtualB.startsWith('-');
+                let baseNumberA = isNegativeA ? virtualA.slice(1) : virtualA;
+                let baseNumberB = isNegativeB ? virtualB.slice(1) : virtualB;
+                
                 // 计算当前节点的级数
-                const currentLevelA = virtualA.split(/(?<!^-)(?=\d)/).length;
-                const currentLevelB = virtualB.split(/(?<!^-)(?=\d)/).length;
+                const currentLevelA = baseNumberA.split('.').length;
+                const currentLevelB = baseNumberB.split('.').length;
                 
                 // 为缺失的级别添加虚拟编号
                 for (let i = currentLevelA; i < maxLevel; i++) {
-                    virtualA += '0';
+                    baseNumberA += '.0';
                 }
                 for (let i = currentLevelB; i < maxLevel; i++) {
-                    virtualB += '0';
+                    baseNumberB += '.0';
                 }
+                
+                // 重新添加负号
+                virtualA = isNegativeA ? '-' + baseNumberA : baseNumberA;
+                virtualB = isNegativeB ? '-' + baseNumberB : baseNumberB;
                 
                 // 使用虚拟编号进行自然排序
                 return virtualA.localeCompare(virtualB, undefined, { numeric: true, sensitivity: 'base' });
@@ -5933,9 +6113,10 @@ class MindMap {
                 // 中心节点深度为0
                 nodeDepths.set(node.id, 0);
             } else {
-                // 其他节点根据编号的位数计算深度
-                // 例如：-1 → 深度1, -21 → 深度2, -221 → 深度3
-                const level = node.nodeNumber.split(/(?<!^-)(?=\d)/).length;
+                // 其他节点根据编号的点号分隔计算深度
+                // 例如：-1 → 深度1, -2.1 → 深度2, -2.2.1 → 深度3
+                const nodeNumber = node.nodeNumber.startsWith('-') ? node.nodeNumber.slice(1) : node.nodeNumber;
+                const level = nodeNumber.split('.').length;
                 nodeDepths.set(node.id, level);
             }
         });
@@ -6027,7 +6208,8 @@ class MindMap {
             // 计算树的最大级别数
             let maxLevel = 1;
             leftNodes.forEach(node => {
-                const level = node.nodeNumber.split(/(?<!^-)(?=\d)/).length;
+                const nodeNumber = node.nodeNumber.startsWith('-') ? node.nodeNumber.slice(1) : node.nodeNumber;
+                const level = nodeNumber.split('.').length;
                 if (level > maxLevel) {
                     maxLevel = level;
                 }
@@ -6040,17 +6222,27 @@ class MindMap {
                 let virtualA = a.nodeNumber;
                 let virtualB = b.nodeNumber;
                 
+                // 处理负节点编号
+                const isNegativeA = virtualA.startsWith('-');
+                const isNegativeB = virtualB.startsWith('-');
+                let baseNumberA = isNegativeA ? virtualA.slice(1) : virtualA;
+                let baseNumberB = isNegativeB ? virtualB.slice(1) : virtualB;
+                
                 // 计算当前节点的级数
-                const currentLevelA = virtualA.split(/(?<!^-)(?=\d)/).length;
-                const currentLevelB = virtualB.split(/(?<!^-)(?=\d)/).length;
+                const currentLevelA = baseNumberA.split('.').length;
+                const currentLevelB = baseNumberB.split('.').length;
                 
                 // 为缺失的级别添加虚拟编号
                 for (let i = currentLevelA; i < maxLevel; i++) {
-                    virtualA += '0';
+                    baseNumberA += '.0';
                 }
                 for (let i = currentLevelB; i < maxLevel; i++) {
-                    virtualB += '0';
+                    baseNumberB += '.0';
                 }
+                
+                // 重新添加负号
+                virtualA = isNegativeA ? '-' + baseNumberA : baseNumberA;
+                virtualB = isNegativeB ? '-' + baseNumberB : baseNumberB;
                 
                 // 使用虚拟编号进行自然排序（负数按绝对值排序）
                 return virtualA.localeCompare(virtualB, undefined, { numeric: true, sensitivity: 'base' });
