@@ -5427,9 +5427,16 @@ class MindMap {
             this.calculateRightNodePositions(rightNodes);
         }
         
+        // 优化正向节点间距
+        this.optimizeNodeSpacing();
+        
         // 计算左侧节点位置（新的虚拟根节点逻辑）
         if (leftNodes.length > 0) {
             this.calculateLeftNodePositions(leftNodes);
+            // 优化反向节点间距
+            this.optimizeReverseNodeSpacing();
+            // 优化0号节点的父节点之间的间距
+            this.optimizeReverseLevel1Spacing();
         }
         
         // 保存0号节点的Y坐标（由右侧子节点决定）
@@ -5488,6 +5495,457 @@ class MindMap {
         
         // 渲染更新后的布局
         this.render();
+    }
+    
+    // 优化节点间距 - 自底而上计算，确保相邻节点（包括整个分支）之间保持至少20px的垂直间距
+    optimizeNodeSpacing() {
+        const MIN_VERTICAL_SPACING = 20;
+        
+        // 1. 只处理正向思维布局的节点（非负编号）
+        const forwardNodes = this.nodes.filter(node => !node.nodeNumber.startsWith('-'));
+        
+        // 2. 计算所有正向节点的深度
+        const nodeDepths = new Map();
+        forwardNodes.forEach(node => {
+            if (node.nodeNumber === "0") {
+                nodeDepths.set(node.id, 0);
+            } else {
+                const depth = node.nodeNumber.split('.').length;
+                nodeDepths.set(node.id, depth);
+            }
+        });
+        
+        // 3. 按深度分组节点，从最深的开始处理
+        const nodesByDepth = new Map();
+        forwardNodes.forEach(node => {
+            const depth = nodeDepths.get(node.id);
+            if (!nodesByDepth.has(depth)) {
+                nodesByDepth.set(depth, []);
+            }
+            nodesByDepth.get(depth).push(node);
+        });
+        
+        // 4. 按深度从大到小排序（自底而上处理）
+        const sortedDepths = Array.from(nodesByDepth.keys()).sort((a, b) => b - a);
+        
+        // 5. 处理每个深度的节点
+        for (const depth of sortedDepths) {
+            const nodesAtDepth = nodesByDepth.get(depth);
+            
+            // 6. 为每个父节点处理其子节点
+            const parentNodes = new Set();
+            nodesAtDepth.forEach(node => {
+                // 只处理正向布局中的父节点
+                node.parents.forEach(parent => {
+                    if (forwardNodes.includes(parent)) {
+                        parentNodes.add(parent);
+                    }
+                });
+            });
+            
+            // 处理每个正向父节点
+            parentNodes.forEach(parent => {
+                // 获取父节点的所有正向子节点
+                const children = parent.children.filter(child => forwardNodes.includes(child));
+                
+                if (children.length <= 1) {
+                    return; // 只有一个子节点，不需要调整
+                }
+                
+                // 计算每个子节点（包括其整个子树）的边界，保持原始顺序
+                const childBounds = [];
+                children.forEach(child => {
+                    childBounds.push({
+                        node: child,
+                        bounds: this.calculateSubtreeBounds(child)
+                    });
+                });
+                
+                // 7. 从顶部开始，确保每个子节点与其上方的子节点保持至少20px的间距
+                // 保持子节点的原始顺序，不进行排序
+                for (let i = 1; i < childBounds.length; i++) {
+                    const prevBounds = childBounds[i - 1].bounds;
+                    const currentBounds = childBounds[i].bounds;
+                    
+                    // 计算当前子节点应该的顶部位置
+                    const expectedTop = prevBounds.bottom + MIN_VERTICAL_SPACING;
+                    
+                    // 如果当前子节点的顶部位置低于预期，需要调整
+                    if (currentBounds.top < expectedTop) {
+                        // 计算需要的偏移量
+                        const offset = expectedTop - currentBounds.top;
+                        
+                        // 调整当前子节点及其所有后代
+                        this.adjustNodeAndDescendantsY(childBounds[i].node, offset);
+                        
+                        // 更新当前子节点的边界
+                        childBounds[i].bounds = this.calculateSubtreeBounds(childBounds[i].node);
+                        
+                        // 更新后续子节点的边界
+                        for (let j = i + 1; j < childBounds.length; j++) {
+                            childBounds[j].bounds = this.calculateSubtreeBounds(childBounds[j].node);
+                        }
+                    }
+                }
+            });
+        }
+        
+        // 8. 调整所有正向父节点Y坐标，使其与子节点对齐
+        forwardNodes.forEach(node => {
+            if (node.children.length > 0) {
+                // 获取父节点的所有正向子节点
+                const children = node.children.filter(child => forwardNodes.includes(child));
+                
+                if (children.length > 0) {
+                    // 按节点编号自然排序子节点，保持原始顺序
+                    const sortedChildren = [...children].sort((a, b) => {
+                        return a.nodeNumber.localeCompare(b.nodeNumber, undefined, { numeric: true, sensitivity: 'base' });
+                    });
+                    
+                    // 根据子节点数量计算父节点Y坐标
+                    let parentY;
+                    if (sortedChildren.length % 2 === 1) {
+                        // 奇数个子节点：使用中间子节点的Y坐标
+                        const middleIndex = Math.floor(sortedChildren.length / 2);
+                        parentY = sortedChildren[middleIndex].y;
+                    } else {
+                        // 偶数个子节点：使用中间两个子节点Y坐标的均值
+                        const middleIndex1 = sortedChildren.length / 2 - 1;
+                        const middleIndex2 = sortedChildren.length / 2;
+                        parentY = (sortedChildren[middleIndex1].y + sortedChildren[middleIndex2].y) / 2;
+                    }
+                    
+                    // 调整父节点Y坐标
+                    node.y = parentY;
+                }
+            }
+        });
+    }
+    
+    // 计算节点及其所有后代的边界
+    calculateSubtreeBounds(node) {
+        let minX = node.x - node.width / 2;
+        let maxX = node.x + node.width / 2;
+        let minY = node.y - node.height / 2;
+        let maxY = node.y + node.height / 2;
+        
+        // 递归计算所有子节点的边界
+        node.children.forEach(child => {
+            const childBounds = this.calculateSubtreeBounds(child);
+            minX = Math.min(minX, childBounds.left);
+            maxX = Math.max(maxX, childBounds.right);
+            minY = Math.min(minY, childBounds.top);
+            maxY = Math.max(maxY, childBounds.bottom);
+        });
+        
+        return {
+            left: minX,
+            right: maxX,
+            top: minY,
+            bottom: maxY,
+            centerX: (minX + maxX) / 2,
+            centerY: (minY + maxY) / 2,
+            width: maxX - minX,
+            height: maxY - minY
+        };
+    }
+    
+    // 调整节点及其所有后代的Y坐标
+    adjustNodeAndDescendantsY(node, yOffset) {
+        // 调整当前节点
+        node.y += yOffset;
+        
+        // 递归调整所有子节点
+        node.children.forEach(child => {
+            this.adjustNodeAndDescendantsY(child, yOffset);
+        });
+    }
+    
+    // 优化反向一级分根节点间距
+    optimizeReverseLevel1Spacing() {
+        const MIN_VERTICAL_SPACING = 20;
+        
+        // 1. 只处理反向思维布局的节点（负编号）
+        const reverseNodes = this.nodes.filter(node => node.nodeNumber.startsWith('-'));
+        
+        if (reverseNodes.length === 0) {
+            return;
+        }
+        
+        // 2. 处理直接连接到0号节点的父节点（一级分根）
+        const node0 = this.nodes.find(node => node.nodeNumber === "0");
+        if (node0) {
+            const level1Parents = node0.parents.filter(parent => reverseNodes.includes(parent));
+            
+            if (level1Parents.length > 1) {
+                // 按节点编号自然排序一级分根
+                const sortedParents = [...level1Parents].sort((a, b) => {
+                    return a.nodeNumber.localeCompare(b.nodeNumber, undefined, { numeric: true, sensitivity: 'base' });
+                });
+                
+                // 计算每个一级分根的边界（包括其所有子节点）
+                const rootBounds = [];
+                sortedParents.forEach(parent => {
+                    rootBounds.push({
+                        root: parent,
+                        bounds: this.calculateSubtreeBounds(parent)
+                    });
+                });
+                
+                // 从顶部开始，确保每个一级分根与其上方的分根保持至少20px的间距
+                for (let i = 1; i < rootBounds.length; i++) {
+                    const prevBounds = rootBounds[i - 1].bounds;
+                    const currentBounds = rootBounds[i].bounds;
+                    
+                    // 计算当前分根应该的顶部位置
+                    const expectedTop = prevBounds.bottom + MIN_VERTICAL_SPACING;
+                    
+                    // 如果当前分根的顶部位置低于预期，需要调整
+                    if (currentBounds.top < expectedTop) {
+                        // 计算需要的偏移量
+                        const offset = expectedTop - currentBounds.top;
+                        
+                        // 调整当前分根及其所有祖先
+                        this.adjustRootAndAncestorsY(rootBounds[i].root, offset);
+                        
+                        // 更新当前分根的边界
+                        rootBounds[i].bounds = this.calculateRootBounds(rootBounds[i].root);
+                        
+                        // 更新后续分根的边界
+                        for (let j = i + 1; j < rootBounds.length; j++) {
+                            rootBounds[j].bounds = this.calculateRootBounds(rootBounds[j].root);
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    // 优化反向节点间距 - 自底而上计算，确保相邻分根节点（包括整个分支）之间保持至少20px的垂直间距
+    optimizeReverseNodeSpacing() {
+        const MIN_VERTICAL_SPACING = 20;
+        
+        // 1. 只处理反向思维布局的节点（负编号）
+        const reverseNodes = this.nodes.filter(node => node.nodeNumber.startsWith('-'));
+        
+        if (reverseNodes.length === 0) {
+            return;
+        }
+        
+        // 2. 计算所有反向节点的深度（深度越大，离0节点越远）
+        const nodeDepths = new Map();
+        reverseNodes.forEach(node => {
+            const nodeNumber = node.nodeNumber.startsWith('-') ? node.nodeNumber.slice(1) : node.nodeNumber;
+            const depth = nodeNumber.split('.').length;
+            nodeDepths.set(node.id, depth);
+        });
+        
+        // 3. 按深度分组节点，从最深的开始处理（从外到内）
+        const nodesByDepth = new Map();
+        reverseNodes.forEach(node => {
+            const depth = nodeDepths.get(node.id);
+            if (!nodesByDepth.has(depth)) {
+                nodesByDepth.set(depth, []);
+            }
+            nodesByDepth.get(depth).push(node);
+        });
+        
+        // 4. 按深度从大到小排序（自底而上处理）
+        const sortedDepths = Array.from(nodesByDepth.keys()).sort((a, b) => b - a);
+        
+        // 5. 处理每个深度的节点
+        for (const depth of sortedDepths) {
+            const nodesAtDepth = nodesByDepth.get(depth);
+            
+            // 6. 为每个子节点处理其父节点（分根）
+            const childNodes = new Set();
+            nodesAtDepth.forEach(node => {
+                // 只处理反向布局中的子节点
+                node.children.forEach(child => {
+                    if (reverseNodes.includes(child)) {
+                        childNodes.add(child);
+                    }
+                });
+            });
+            
+            // 处理每个反向子节点
+            childNodes.forEach(child => {
+                // 获取子节点的所有反向父节点（分根）
+                const parents = child.parents.filter(parent => reverseNodes.includes(parent));
+                
+                if (parents.length <= 1) {
+                    return; // 只有一个父节点，不需要调整
+                }
+                
+                // 7. 计算每个分根的边界（包括其所有父节点）
+                const rootBounds = [];
+                parents.forEach(parent => {
+                    rootBounds.push({
+                        root: parent,
+                        bounds: this.calculateRootBounds(parent)
+                    });
+                });
+                
+                // 8. 按节点编号自然排序分根，保持原始顺序
+                rootBounds.sort((a, b) => {
+                    return a.root.nodeNumber.localeCompare(b.root.nodeNumber, undefined, { numeric: true, sensitivity: 'base' });
+                });
+                
+                // 9. 从顶部开始，确保每个分根与其上方的分根保持至少20px的间距
+                for (let i = 1; i < rootBounds.length; i++) {
+                    const prevBounds = rootBounds[i - 1].bounds;
+                    const currentBounds = rootBounds[i].bounds;
+                    
+                    // 计算当前分根应该的顶部位置
+                    const expectedTop = prevBounds.bottom + MIN_VERTICAL_SPACING;
+                    
+                    // 如果当前分根的顶部位置低于预期，需要调整
+                    if (currentBounds.top < expectedTop) {
+                        // 计算需要的偏移量
+                        const offset = expectedTop - currentBounds.top;
+                        
+                        // 调整当前分根及其所有父节点
+                        this.adjustRootAndAncestorsY(rootBounds[i].root, offset);
+                        
+                        // 更新当前分根的边界
+                        rootBounds[i].bounds = this.calculateRootBounds(rootBounds[i].root);
+                        
+                        // 更新后续分根的边界
+                        for (let j = i + 1; j < rootBounds.length; j++) {
+                            rootBounds[j].bounds = this.calculateRootBounds(rootBounds[j].root);
+                        }
+                    }
+                }
+            });
+        }
+        
+        // 10. 调整所有反向子节点Y坐标，使其与父节点对齐
+        reverseNodes.forEach(node => {
+            if (node.parents.length > 0) {
+                // 获取节点的所有反向父节点
+                const parents = node.parents.filter(parent => reverseNodes.includes(parent));
+                
+                if (parents.length > 0) {
+                    // 按节点编号自然排序父节点，保持原始顺序
+                    const sortedParents = [...parents].sort((a, b) => {
+                        return a.nodeNumber.localeCompare(b.nodeNumber, undefined, { numeric: true, sensitivity: 'base' });
+                    });
+                    
+                    // 根据父节点数量计算子节点Y坐标
+                    let childY;
+                    if (sortedParents.length % 2 === 1) {
+                        // 奇数个父节点：使用中间父节点的Y坐标
+                        const middleIndex = Math.floor(sortedParents.length / 2);
+                        childY = sortedParents[middleIndex].y;
+                    } else {
+                        // 偶数个父节点：使用中间两个父节点Y坐标的均值
+                        const middleIndex1 = sortedParents.length / 2 - 1;
+                        const middleIndex2 = sortedParents.length / 2;
+                        childY = (sortedParents[middleIndex1].y + sortedParents[middleIndex2].y) / 2;
+                    }
+                    
+                    // 调整子节点Y坐标
+                    node.y = childY;
+                }
+            }
+        });
+    }
+    
+    // 计算分根节点及其所有祖先的边界
+    calculateRootBounds(node) {
+        let minX = node.x - node.width / 2;
+        let maxX = node.x + node.width / 2;
+        let minY = node.y - node.height / 2;
+        let maxY = node.y + node.height / 2;
+        
+        // 递归计算所有父节点的边界
+        node.parents.forEach(parent => {
+            const parentBounds = this.calculateRootBounds(parent);
+            minX = Math.min(minX, parentBounds.left);
+            maxX = Math.max(maxX, parentBounds.right);
+            minY = Math.min(minY, parentBounds.top);
+            maxY = Math.max(maxY, parentBounds.bottom);
+        });
+        
+        return {
+            left: minX,
+            right: maxX,
+            top: minY,
+            bottom: maxY,
+            centerX: (minX + maxX) / 2,
+            centerY: (minY + maxY) / 2,
+            width: maxX - minX,
+            height: maxY - minY
+        };
+    }
+    
+    // 调整分根节点及其所有祖先的Y坐标
+    adjustRootAndAncestorsY(node, yOffset) {
+        // 调整当前节点
+        node.y += yOffset;
+        
+        // 递归调整所有父节点
+        node.parents.forEach(parent => {
+            this.adjustRootAndAncestorsY(parent, yOffset);
+        });
+    }
+    
+    // 优化反向布局中0号节点的父节点（一级节点）之间的间距
+    optimizeReverseLevel1Spacing() {
+        const MIN_VERTICAL_SPACING = 20;
+        
+        // 1. 找到0号节点
+        const node0 = this.nodes.find(node => node.nodeNumber === "0");
+        if (!node0) {
+            return;
+        }
+        
+        // 2. 获取0号节点的所有反向父节点（一级节点）
+        const level1Nodes = node0.parents.filter(parent => parent.nodeNumber.startsWith('-'));
+        
+        if (level1Nodes.length <= 1) {
+            return; // 只有一个或没有父节点，不需要调整
+        }
+        
+        // 3. 按节点编号自然排序，保持原始顺序
+        const sortedLevel1Nodes = [...level1Nodes].sort((a, b) => {
+            return a.nodeNumber.localeCompare(b.nodeNumber, undefined, { numeric: true, sensitivity: 'base' });
+        });
+        
+        // 4. 计算每个一级节点的边界（包括其整个子树）
+        const nodeBounds = [];
+        sortedLevel1Nodes.forEach(node => {
+            nodeBounds.push({
+                node: node,
+                bounds: this.calculateRootBounds(node)
+            });
+        });
+        
+        // 5. 从顶部开始，确保每个一级节点与其上方的一级节点保持至少20px的间距
+        for (let i = 1; i < nodeBounds.length; i++) {
+            const prevBounds = nodeBounds[i - 1].bounds;
+            const currentBounds = nodeBounds[i].bounds;
+            
+            // 计算当前一级节点应该的顶部位置
+            const expectedTop = prevBounds.bottom + MIN_VERTICAL_SPACING;
+            
+            // 如果当前一级节点的顶部位置低于预期，需要调整
+            if (currentBounds.top < expectedTop) {
+                // 计算需要的偏移量
+                const offset = expectedTop - currentBounds.top;
+                
+                // 调整当前一级节点及其所有祖先
+                this.adjustRootAndAncestorsY(nodeBounds[i].node, offset);
+                
+                // 更新当前一级节点的边界
+                nodeBounds[i].bounds = this.calculateRootBounds(nodeBounds[i].node);
+                
+                // 更新后续一级节点的边界
+                for (let j = i + 1; j < nodeBounds.length; j++) {
+                    nodeBounds[j].bounds = this.calculateRootBounds(nodeBounds[j].node);
+                }
+            }
+        }
     }
     
     // 获取所有叶子节点（没有子节点的节点）
