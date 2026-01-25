@@ -9,6 +9,7 @@ class Node {
         this.parents = Array.isArray(parents) ? parents : [parents].filter(p => p !== null);
         this.children = [];
         this.isReverseConnection = false;
+        this.isCenterNode = false; // 标识是否为中心节点
         this.style = {
             nodeColor: '#ffffff',
             borderColor: '#000000',
@@ -118,9 +119,10 @@ class MindMap {
         // 创建根节点 - 初始位置为(0,0)
         this.rootNode = this.createNode('', 0, 0);
         
-        // 设置初始节点编号为0
+        // 设置初始节点属性
         this.rootNode.text = "";  // 保持节点内容为空
         this.rootNode.nodeNumber = "0";  // 将编号存储到正确的属性
+        this.rootNode.isCenterNode = true; // 标记为中心节点
         
         // 保存初始状态
         this.saveState();
@@ -135,9 +137,19 @@ class MindMap {
         this.stopTouchDrag = this.stopTouchDrag.bind(this);
         this.resizeCanvas = this.resizeCanvas.bind(this);
         
+        // 实时自动布局相关
+        this.isRealTimeLayoutEnabled = true; // 默认启用实时布局
+        this.debounceTimeout = null;
+        this.debounceDelay = 300; // 防抖延迟时间（毫秒）
+        
+        // 绑定实时布局相关函数
+        this.triggerRealTimeLayout = this.triggerRealTimeLayout.bind(this);
+        this.debouncedLayout = this.debounce(() => this.autoLayout(false), this.debounceDelay);
+        
         this.initEventListeners();
         this.initThumbnail();
         this.initMobileLayout();
+        this.initRealTimeLayoutToggle();
         
         // 初始化画布偏移量，将(0,0)设置为页面中心
         this.resizeCanvas();
@@ -278,6 +290,32 @@ class MindMap {
             this.saveState();
         }
         
+        // 确保中心节点的属性正确设置
+        if (this.nodes.length > 0) {
+            // 查找所有nodeNumber为"0"的节点
+            const zeroNodes = this.nodes.filter(node => node.nodeNumber === "0");
+            
+            // 如果有多个nodeNumber为"0"的节点，只保留第一个，其他的重新编号
+            if (zeroNodes.length > 1) {
+                zeroNodes[0].isCenterNode = true; // 第一个作为中心节点
+                // 其他的重新编号为负号开头的编号
+                for (let i = 1; i < zeroNodes.length; i++) {
+                    zeroNodes[i].nodeNumber = `-${i}`;
+                    zeroNodes[i].isCenterNode = false;
+                }
+            } else if (zeroNodes.length === 1) {
+                // 只有一个nodeNumber为"0"的节点，标记为中心节点
+                zeroNodes[0].isCenterNode = true;
+            } else {
+                // 没有nodeNumber为"0"的节点，选择第一个节点作为中心节点
+                this.nodes[0].nodeNumber = "0";
+                this.nodes[0].isCenterNode = true;
+            }
+        }
+        
+        // 触发实时布局
+        this.triggerRealTimeLayout();
+        
         return node;
     }
     
@@ -287,8 +325,8 @@ class MindMap {
         const parentNumber = parentNode.nodeNumber;
         const siblings = direction === 'forward' ? parentNode.children : parentNode.parents;
         
-        // 对于初始节点（编号为"0"）的特殊处理
-        if (parentNumber === "0") {
+        // 对于初始节点（编号为"0"或空字符串）的特殊处理
+        if (parentNumber === "0" || parentNumber === "") {
             // 获取所有兄弟节点的编号
             const siblingNumbers = siblings.map(sibling => {
                 return parseInt(sibling.nodeNumber) || 0;
@@ -337,6 +375,7 @@ class MindMap {
                 id: node.id,
                 text: node.text,
                 nodeNumber: node.nodeNumber,
+                isCenterNode: node.isCenterNode,
                 x: node.x,
                 y: node.y,
                 style: { ...node.style },
@@ -412,8 +451,13 @@ class MindMap {
             // 设置节点文字
             node.text = nodeData.text;
             // 设置节点编号（如果存在）
-            if (nodeData.nodeNumber) {
+            if (nodeData.nodeNumber !== undefined && nodeData.nodeNumber !== null) {
                 node.nodeNumber = nodeData.nodeNumber;
+            }
+            
+            // 设置是否为中心节点
+            if (nodeData.isCenterNode !== undefined) {
+                node.isCenterNode = nodeData.isCenterNode;
             }
             // 设置样式
             node.style = nodeData.style;
@@ -479,9 +523,37 @@ class MindMap {
             this.selectedNode = this.selectedNodes.length > 0 ? this.selectedNodes[0] : null;
         }
         
-        // 更新样式面板和渲染
+        // 更新样式面板
         this.updateStylePanel();
+        
+        // 确保中心节点的属性正确设置
+        if (this.nodes.length > 0) {
+            // 查找所有nodeNumber为"0"的节点
+            const zeroNodes = this.nodes.filter(node => node.nodeNumber === "0");
+            
+            // 如果有多个nodeNumber为"0"的节点，只保留第一个，其他的重新编号
+            if (zeroNodes.length > 1) {
+                zeroNodes[0].isCenterNode = true; // 第一个作为中心节点
+                // 其他的重新编号为负号开头的编号
+                for (let i = 1; i < zeroNodes.length; i++) {
+                    zeroNodes[i].nodeNumber = `-${i}`;
+                    zeroNodes[i].isCenterNode = false;
+                }
+            } else if (zeroNodes.length === 1) {
+                // 只有一个nodeNumber为"0"的节点，标记为中心节点
+                zeroNodes[0].isCenterNode = true;
+            } else {
+                // 没有nodeNumber为"0"的节点，选择第一个节点作为中心节点
+                this.nodes[0].nodeNumber = "0";
+                this.nodes[0].isCenterNode = true;
+            }
+        }
+        
+        // 立即渲染，确保画布显示正确的节点状态
         this.render();
+        
+        // 触发实时布局
+        this.triggerRealTimeLayout();
     }
 
     deleteNode(node) {
@@ -556,6 +628,9 @@ class MindMap {
         }
         
         this.render();
+        
+        // 触发实时布局
+        this.triggerRealTimeLayout();
     }
     
     // 复制选中的节点
@@ -952,12 +1027,12 @@ class MindMap {
         const spacing = 50; // 节点之间的间距
         const estimatedNodeHeight = 50; // 估计的新节点高度
         const defaultNodeWidth = 400; // 默认节点宽度设置为400px
-        const horizontalSpacing = 108; // 固定的水平间距
+        const horizontalSpacing = 120; // 固定的水平间距
         
         let newX, newY;
         
         if (targetNode.parents.length === 0) {
-            // 第一个父节点，放在目标节点左侧，保持108px的水平间距
+            // 第一个父节点，放在目标节点左侧，保持120px的水平间距
             // 计算第一个父节点的右端点位置：目标节点左端点 - 水平间距
             const firstParentRight = targetNode.x - targetNode.width / 2 - horizontalSpacing;
             // 节点的X坐标是中心位置，所以需要减去宽度的一半
@@ -1045,6 +1120,9 @@ class MindMap {
         
         node.text = newText;
         this.render();
+        
+        // 触发实时布局
+        this.triggerRealTimeLayout();
     }
     
     render() {
@@ -2860,12 +2938,12 @@ class MindMap {
         const spacing = 50; // 节点之间的间距
         const estimatedNodeHeight = 50; // 估计的新节点高度
         const defaultNodeWidth = 400; // 默认节点宽度设置为400px
-        const horizontalSpacing = 108; // 固定的水平间距
+        const horizontalSpacing = 120; // 固定的水平间距
         
         let newX, newY;
         
         if (parent.children.length === 0) {
-            // 第一个子节点，放在父节点右侧，保持108px的水平间距
+            // 第一个子节点，放在父节点右侧，保持120px的水平间距
             // 计算第一个子节点的左端点位置：父节点右端点 + 水平间距
             const firstChildLeft = parent.x + parent.width / 2 + horizontalSpacing;
             // 节点的X坐标是中心位置，所以需要加上宽度的一半
@@ -3000,6 +3078,9 @@ class MindMap {
         });
         
         this.render();
+        
+        // 触发实时布局
+        this.triggerRealTimeLayout();
     }
     
     // 更新连接线颜色
@@ -3012,6 +3093,53 @@ class MindMap {
         
         // 重新渲染画布
         this.render();
+    }
+    
+    saveJson(fileName = null) {
+        try {
+            // 准备保存的数据，避免循环引用
+            const mapData = {
+                nodes: this.nodes.map(node => ({
+                    id: node.id,
+                    text: node.text,
+                    nodeNumber: node.nodeNumber,
+                    x: node.x,
+                    y: node.y,
+                    style: node.style,
+                    isReverseConnection: node.isReverseConnection,
+                    width: node.width,
+                    height: node.height,
+                    isCenterNode: node.isCenterNode,
+                    // 只保存父节点ID，避免循环引用
+                    parents: node.parents.map(parent => ({ id: parent.id }))
+                })),
+                nextNodeId: this.nextNodeId,
+                connectionColor: this.connectionColor
+            };
+            
+            const content = JSON.stringify(mapData, null, 2);
+            const mimeType = 'application/json';
+            const finalFileName = fileName ? `${fileName}.json` : 'mindmap.json';
+            
+            // 创建Blob对象
+            const blob = new Blob([content], { type: mimeType });
+            
+            // 创建下载链接
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = finalFileName;
+            
+            // 触发下载
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            
+            // 释放URL对象
+            URL.revokeObjectURL(a.href);
+        } catch (error) {
+            console.error('保存JSON文件失败:', error);
+            alert('保存失败: ' + error.message);
+        }
     }
     
     saveMap(format = null, fileName = null) {
@@ -4087,11 +4215,11 @@ class MindMap {
         }
     }
     
-    // 打开保存弹窗
-    openSaveDialog() {
-        const saveDialog = document.getElementById('saveDialog');
-        if (saveDialog) {
-            saveDialog.classList.add('active');
+    // 打开导出弹窗
+    openExportDialog() {
+        const exportDialog = document.getElementById('exportDialog');
+        if (exportDialog) {
+            exportDialog.classList.add('active');
             
             // 设置默认文件名
             const fileNameInput = document.getElementById('fileNameInput');
@@ -4103,12 +4231,75 @@ class MindMap {
         }
     }
     
+    // 初始化导出弹窗事件监听
+    initExportDialogListeners() {
+        const exportDialog = document.getElementById('exportDialog');
+        const closeBtn = document.getElementById('closeExportDialog');
+        const cancelBtn = document.getElementById('cancelExport');
+        const confirmBtn = document.getElementById('confirmExport');
+        const formatSelect = document.getElementById('exportFormatSelect');
+        const fileNameInput = document.getElementById('fileNameInput');
+        
+        // 关闭弹窗
+        const closeDialog = () => {
+            exportDialog.classList.remove('active');
+        };
+        
+        // 打开弹窗
+        const openDialog = () => {
+            exportDialog.classList.add('active');
+        };
+        
+        // 确认导出
+        const confirmExport = () => {
+            const format = formatSelect ? formatSelect.value : 'svg';
+            const fileName = fileNameInput ? fileNameInput.value.trim() : 'mindmap';
+            
+            // 确保文件名不为空
+            const finalFileName = fileName || 'mindmap';
+            
+            // 执行导出操作
+            this.saveMap(format, finalFileName);
+            
+            // 关闭弹窗
+            closeDialog();
+        };
+        
+        // 绑定事件
+        if (closeBtn) closeBtn.addEventListener('click', closeDialog);
+        if (cancelBtn) cancelBtn.addEventListener('click', closeDialog);
+        if (confirmBtn) confirmBtn.addEventListener('click', confirmExport);
+        
+        // 点击弹窗外部关闭
+        if (exportDialog) {
+            exportDialog.addEventListener('click', (e) => {
+                if (e.target === exportDialog) {
+                    closeDialog();
+                }
+            });
+        }
+        
+        // 回车键确认导出
+        if (fileNameInput) {
+            fileNameInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    confirmExport();
+                }
+            });
+        }
+    }
+    
     initEventListeners() {
         // 工具栏按钮事件 - 检查元素是否存在
         
         const saveMapBtn = document.getElementById('saveMap');
         if (saveMapBtn) {
-            saveMapBtn.addEventListener('click', () => this.openSaveDialog());
+            saveMapBtn.addEventListener('click', () => this.saveJson());
+        }
+        
+        const exportMapBtn = document.getElementById('exportMap');
+        if (exportMapBtn) {
+            exportMapBtn.addEventListener('click', () => this.openExportDialog());
         }
         
         const loadMapBtn = document.getElementById('loadMap');
@@ -4122,8 +4313,8 @@ class MindMap {
             autoLayoutBtn.addEventListener('click', () => this.autoLayout());
         }
         
-        // 自定义保存弹窗事件
-        this.initSaveDialogListeners();
+        // 自定义导出弹窗事件
+        this.initExportDialogListeners();
         
         // 样式面板事件 - 检查元素是否存在
         var styleInputs = ['nodeColor', 'borderColor', 'fontColor', 'fontSize', 'fontFamily', 'connectionColor'];
@@ -5301,8 +5492,8 @@ class MindMap {
     
     // 为自动布局生成节点编号
     generateNodeNumbersForAutoLayout() {
-        // 1. 找到中心节点（0号节点）或根节点
-        let centerNode = this.nodes.find(node => node.nodeNumber === "0");
+        // 1. 找到中心节点（标记为isCenterNode的节点）或根节点
+        let centerNode = this.nodes.find(node => node.isCenterNode);
         
         // 如果没有中心节点，找到根节点作为中心节点
         if (!centerNode) {
@@ -5310,6 +5501,7 @@ class MindMap {
             centerNode = rootNodes[0] || this.nodes[0];
             if (centerNode) {
                 centerNode.nodeNumber = "0";
+                centerNode.isCenterNode = true; // 标记为中心节点
             }
         }
         
@@ -5350,8 +5542,8 @@ class MindMap {
         let nextNumber = maxNumber + 1;
         
         sortedChildren.forEach(child => {
-            if (!child.nodeNumber || child.nodeNumber.startsWith('-')) {
-                // 生成新的正向编号
+            if (!child.nodeNumber) {
+                // 只为没有编号的节点生成正向编号
                 child.nodeNumber = `${nextNumber++}`;
                 
                 // 递归处理子节点
@@ -5360,6 +5552,7 @@ class MindMap {
                 // 已有的正向编号，递归处理子节点
                 this.generateForwardNodeNumbers(child);
             }
+            // 跳过已有反向编号的节点
         });
     }
     
@@ -5389,8 +5582,8 @@ class MindMap {
         let nextNumber = minNumber - 1;
         
         sortedParents.forEach(parent => {
-            if (!parent.nodeNumber || !parent.nodeNumber.startsWith('-')) {
-                // 生成新的反向编号
+            if (!parent.nodeNumber) {
+                // 只为没有编号的节点生成反向编号
                 parent.nodeNumber = `${nextNumber--}`;
                 
                 // 递归处理父节点
@@ -5399,12 +5592,15 @@ class MindMap {
                 // 已有的反向编号，递归处理父节点
                 this.generateReverseNodeNumbers(parent);
             }
+            // 跳过已有正向编号的节点
         });
     }
     
     // 自动布局功能 - 分离正向和反向布局
-    autoLayout() {
-        this.saveState();
+    autoLayout(saveState = true) {
+        if (saveState) {
+            this.saveState();
+        }
         this.calculateNodeSizes();
         
         // 如果没有节点或只有一个节点且没有子节点，不需要布局
@@ -5888,6 +6084,51 @@ class MindMap {
         node.parents.forEach(parent => {
             this.adjustRootAndAncestorsY(parent, yOffset);
         });
+    }
+    
+    // 防抖函数
+    debounce(func, wait) {
+        let timeout;
+        return function executedFunction(...args) {
+            const later = () => {
+                clearTimeout(timeout);
+                func(...args);
+            };
+            clearTimeout(timeout);
+            timeout = setTimeout(later, wait);
+        };
+    }
+    
+    // 触发实时布局
+    triggerRealTimeLayout() {
+        // 方案一：适用于所有思维导图
+        if (this.isRealTimeLayoutEnabled) {
+            this.debouncedLayout();
+        }
+    }
+    
+    // 启用/禁用实时布局
+    toggleRealTimeLayout(enabled) {
+        this.isRealTimeLayoutEnabled = enabled;
+    }
+    
+    // 获取实时布局状态
+    getRealTimeLayoutEnabled() {
+        return this.isRealTimeLayoutEnabled;
+    }
+    
+    // 初始化实时布局开关
+    initRealTimeLayoutToggle() {
+        const realTimeLayoutToggle = document.getElementById('realTimeLayoutToggle');
+        if (realTimeLayoutToggle) {
+            // 设置初始状态
+            realTimeLayoutToggle.checked = this.isRealTimeLayoutEnabled;
+            
+            // 添加事件监听器
+            realTimeLayoutToggle.addEventListener('change', (e) => {
+                this.toggleRealTimeLayout(e.target.checked);
+            });
+        }
     }
     
     // 优化反向布局中0号节点的父节点（一级节点）之间的间距
