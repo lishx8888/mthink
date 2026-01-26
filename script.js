@@ -765,30 +765,93 @@ class MindMap {
                         });
                         
                         // 确保节点路径应用了正确的样式
-                        const nodePath = nodeGroup.querySelector('path');
-                        if (nodePath) {
-                            // 确保路径样式与节点当前样式完全一致
-                            nodePath.setAttribute('fill', node.style.nodeColor || '#ffffff');
-                            nodePath.setAttribute('stroke', node.style.borderColor || '#000000');
-                            nodePath.setAttribute('stroke-width', '2');
-                            // 确保路径没有被错误地应用了其他样式
-                            nodePath.removeAttribute('stroke-dasharray');
-                            nodePath.removeAttribute('opacity');
-                        }
+                            const nodePath = nodeGroup.querySelector('path');
+                            if (nodePath) {
+                                // 确保路径样式与节点当前样式完全一致
+                                nodePath.setAttribute('fill', node.style.nodeColor || '#ffffff');
+                                nodePath.setAttribute('stroke', node.style.borderColor || '#000000');
+                                nodePath.setAttribute('stroke-width', '2');
+                                // 确保路径没有被错误地应用了其他样式
+                                nodePath.removeAttribute('stroke-dasharray');
+                                nodePath.removeAttribute('opacity');
+                            }
+                            
+                            // 移除画布平移转换
+                            nodeGroup.removeAttribute('transform');
                     }
                 });
                 
-                // 确保连接线（曲线）的颜色正确
+                // 确保连接线（曲线）的颜色正确并修正坐标
                 const pngConnections = tempCanvas.querySelectorAll('.connection');
                 pngConnections.forEach(connection => {
+                    // 修正坐标：移除canvasOffsetX和canvasOffsetY
+                    let path = connection.getAttribute('d');
+                    
+                    // 使用更健壮的路径解析方法
+                    const pathData = path.match(/([MLC])([^MLC]*)/gi) || [];
+                    let newPath = '';
+                    
+                    pathData.forEach(segment => {
+                        const cmd = segment.charAt(0);
+                        const coords = segment.slice(1).trim();
+                        
+                        if (coords) {
+                            const coordPairs = coords.match(/([\d.-]+)\s+([\d.-]+)/gi) || [];
+                            newPath += cmd;
+                            
+                            coordPairs.forEach(pair => {
+                                const [x, y] = pair.split(/\s+/).map(Number);
+                                // 减去偏移量，保留两位小数以提高精度
+                                const newX = (x - this.canvasOffsetX).toFixed(2);
+                                const newY = (y - this.canvasOffsetY).toFixed(2);
+                                newPath += ` ${newX} ${newY}`;
+                            });
+                            
+                            newPath += ' ';
+                        } else {
+                            newPath += cmd + ' ';
+                        }
+                    });
+                    
+                    connection.setAttribute('d', newPath.trim());
                     connection.setAttribute('stroke', this.connectionColor);
                     connection.setAttribute('stroke-width', '2');
                     connection.setAttribute('fill', 'none');
                 });
                 
-                // 确保箭头的颜色正确
+                // 确保箭头的颜色正确并修正坐标
                 const pngArrows = tempCanvas.querySelectorAll('.arrow');
                 pngArrows.forEach(arrow => {
+                    // 修正坐标：移除canvasOffsetX和canvasOffsetY
+                    let path = arrow.getAttribute('d');
+                    
+                    // 使用更健壮的路径解析方法
+                    const pathData = path.match(/([MLZ])([^MLZ]*)/gi) || [];
+                    let newPath = '';
+                    
+                    pathData.forEach(segment => {
+                        const cmd = segment.charAt(0);
+                        const coords = segment.slice(1).trim();
+                        
+                        if (coords) {
+                            const coordPairs = coords.match(/([\d.-]+)\s+([\d.-]+)/gi) || [];
+                            newPath += cmd;
+                            
+                            coordPairs.forEach(pair => {
+                                const [x, y] = pair.split(/\s+/).map(Number);
+                                // 减去偏移量，保留两位小数以提高精度
+                                const newX = (x - this.canvasOffsetX).toFixed(2);
+                                const newY = (y - this.canvasOffsetY).toFixed(2);
+                                newPath += ` ${newX} ${newY}`;
+                            });
+                            
+                            newPath += ' ';
+                        } else {
+                            newPath += cmd + ' ';
+                        }
+                    });
+                    
+                    arrow.setAttribute('d', newPath.trim());
                     arrow.setAttribute('fill', this.connectionColor);
                     arrow.setAttribute('stroke', this.connectionColor);
                     arrow.setAttribute('stroke-width', '1');
@@ -797,10 +860,17 @@ class MindMap {
                 // 计算所有节点的边界框，用于设置SVG的导出区域
                 const pngBoundingBox = this.calculateNodesBoundingBox();
                 
+                // 添加适当的边距
+                const margin = 20;
+                const viewBoxX = pngBoundingBox.minX - margin;
+                const viewBoxY = pngBoundingBox.minY - margin;
+                const viewBoxWidth = pngBoundingBox.width + 2 * margin;
+                const viewBoxHeight = pngBoundingBox.height + 2 * margin;
+                
                 // 设置SVG的viewBox和尺寸，确保包含所有节点并具有适当边距
-                tempCanvas.setAttribute('viewBox', `${pngBoundingBox.minX} ${pngBoundingBox.minY} ${pngBoundingBox.width} ${pngBoundingBox.height}`);
-                tempCanvas.setAttribute('width', `${pngBoundingBox.width}px`);
-                tempCanvas.setAttribute('height', `${pngBoundingBox.height}px`);
+                tempCanvas.setAttribute('viewBox', `${viewBoxX} ${viewBoxY} ${viewBoxWidth} ${viewBoxHeight}`);
+                tempCanvas.setAttribute('width', `${viewBoxWidth}px`);
+                tempCanvas.setAttribute('height', `${viewBoxHeight}px`);
                 // 保持preserveAspectRatio为xMidYMid meet，确保内容不会被拉伸
                 tempCanvas.setAttribute('preserveAspectRatio', 'xMidYMid meet');
                 
@@ -826,16 +896,16 @@ class MindMap {
                     const resolution = 2;
                     
                     // 设置Canvas大小为边界框尺寸乘以分辨率倍数
-                    canvas.width = pngBoundingBox.width * resolution;
-                    canvas.height = pngBoundingBox.height * resolution;
+                    canvas.width = viewBoxWidth * resolution;
+                    canvas.height = viewBoxHeight * resolution;
                     
                     // 设置缩放因子
                     ctx.scale(resolution, resolution);
                     
                     // 绘制SVG内容到Canvas
                     ctx.fillStyle = '#ffffff';
-                    ctx.fillRect(0, 0, pngBoundingBox.width, pngBoundingBox.height);
-                    ctx.drawImage(img, 0, 0, pngBoundingBox.width, pngBoundingBox.height);
+                    ctx.fillRect(0, 0, viewBoxWidth, viewBoxHeight);
+                    ctx.drawImage(img, 0, 0, viewBoxWidth, viewBoxHeight);
                     
                     // 将Canvas内容转换为Blob
                     canvas.toBlob(blob => {
@@ -4942,8 +5012,8 @@ class MindMap {
                     // alert('请先选择一个节点！');
                 }
             }
-            // 按'V'键创建父节点
-            else if (e.key === 'v' || e.key === 'V') {
+            // 按'V'键创建父节点（只有当Ctrl键没有被按下时）
+            else if ((e.key === 'v' || e.key === 'V') && !this.isCtrlPressed) {
                 // 如果正在编辑节点文本，不执行节点创建操作
                 if (this.isEditingNode) {
                     return; // 让事件自然冒泡，由文本编辑框处理
