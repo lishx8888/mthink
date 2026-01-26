@@ -1,0 +1,26 @@
+[package]
+name = "mthink"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+tauri = { version = "1.0.0", features = ["api-all"] }
+serde_json = "1.0"
+serde = { version = "1.0", features = ["derive"] }
+
+[features]
+# this feature is used for production builds or when `devPath` points to the filesystem
+# DO NOT remove this
+custom-protocol = ["tauri/custom-protocol"]
+
+[build-dependencies]
+tauri-build = { version = "1.0.0" }
+
+[lib]
+crate-type = ["staticlib"]
+
+[[bin]]
+name = "mthink"
+path = "src/main.rs"
