@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
+  <!-- 背景 -->
+  <rect width="256" height="256" fill="#ffffff"/>
+  
+  <!-- 中心节点 -->
+  <circle cx="128" cy="128" r="40" fill="#3498db" stroke="#2980b9" stroke-width="4"/>
+  <text x="128" y="134" font-family="Arial" font-size="16" font-weight="bold" text-anchor="middle" fill="#ffffff">思维</text>
+  
+  <!-- 分支连接线 -->
+  <path d="M128,88 L128,48" stroke="#2980b9" stroke-width="3" stroke-linecap="round"/>
+  <path d="M168,128 L208,128" stroke="#2980b9" stroke-width="3" stroke-linecap="round"/>
+  <path d="M128,168 L128,208" stroke="#2980b9" stroke-width="3" stroke-linecap="round"/>
+  <path d="M88,128 L48,128" stroke="#2980b9" stroke-width="3" stroke-linecap="round"/>
+  <path d="M152,96 L184,64" stroke="#2980b9" stroke-width="3" stroke-linecap="round"/>
+  <path d="M152,160 L184,192" stroke="#2980b9" stroke-width="3" stroke-linecap="round"/>
+  <path d="M104,160 L72,192" stroke="#2980b9" stroke-width="3" stroke-linecap="round"/>
+  <path d="M104,96 L72,64" stroke="#2980b9" stroke-width="3" stroke-linecap="round"/>
+  
+  <!-- 分支节点 -->
+  <circle cx="128" cy="48" r="20" fill="#2ecc71" stroke="#27ae60" stroke-width="2"/>
+  <circle cx="208" cy="128" r="20" fill="#e74c3c" stroke="#c0392b" stroke-width="2"/>
+  <circle cx="128" cy="208" r="20" fill="#f39c12" stroke="#e67e22" stroke-width="2"/>
+  <circle cx="48" cy="128" r="20" fill="#9b59b6" stroke="#8e44ad" stroke-width="2"/>
+  <circle cx="184" cy="64" r="15" fill="#1abc9c" stroke="#16a085" stroke-width="2"/>
+  <circle cx="184" cy="192" r="15" fill="#34495e" stroke="#2c3e50" stroke-width="2"/>
+  <circle cx="72" cy="192" r="15" fill="#f1c40f" stroke="#f39c12" stroke-width="2"/>
+  <circle cx="72" cy="64" r="15" fill="#e67e22" stroke="#d35400" stroke-width="2"/>
+</svg>
