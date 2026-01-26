@@ -3,9 +3,8 @@
   "build": {
     "beforeDevCommand": "",
     "beforeBuildCommand": "",
-    "devPath": "../",
-    "distDir": "../",
-    "withGlobalTauri": true
+    "devPath": "../index.html",
+    "distDir": "../"
   },
   "package": {
     "productName": "思维导图应用",
