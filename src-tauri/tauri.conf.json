@@ -25,22 +25,7 @@
       "identifier": "com.mthink.app",
       "icon": [
         "icons/icon.ico"
-      ],
-      "windows": {
-        "nsis": {
-          "oneClick": true,
-          "perMachine": false,
-          "allowElevation": true,
-          "allowToChangeInstallationDirectory": false,
-          "installerIcon": "icons/icon.ico",
-          "uninstallerIcon": "icons/icon.ico",
-          "installerHeaderIcon": "icons/icon.ico",
-          "createDesktopShortcut": true,
-          "createStartMenuShortcut": true,
-          "shortcutName": "思维导图应用",
-          "runAfterFinish": true
-        }
-      }
+      ]
     },
     "security": {
       "csp": "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:"
