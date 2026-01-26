@@ -25,6 +25,10 @@ jobs:
 
       - name: Build application
         run: npm run build
+        env:
+          NODE_OPTIONS: --max-old-space-size=4096
+          ELECTRON_BUILDER_ALLOW_UNRESOLVED_DEPENDENCIES: true
+          ELECTRON_BUILDER_SKIP_WIN_CODE_SIGN: true
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
