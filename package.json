@@ -4,52 +4,19 @@
   "description": "思维导图应用",
   "main": "main.js",
   "scripts": {
-    "start": "electron .",
-    "build": "electron-builder"
+    "start": "tauri dev",
+    "build": "tauri build"
   },
   "keywords": [
     "mindmap",
-    "electron",
+    "tauri",
     "desktop"
   ],
   "author": "",
   "license": "MIT",
   "devDependencies": {
-    "electron": "^28.0.0",
-    "electron-builder": "^24.0.0"
+    "@tauri-apps/cli": "^1.5.0",
+    "@tauri-apps/api": "^1.5.0"
   },
-  "build": {
-    "appId": "com.mthink.app",
-    "productName": "思维导图应用",
-    "directories": {
-      "output": "dist"
-    },
-    "win": {
-      "target": "nsis",
-      "icon": "build/icon.ico",
-      "compression": "maximum",
-      "artifactName": "${productName}-${version}-${arch}.${ext}"
-    },
-    "nsis": {
-      "oneClick": false,
-      "allowElevation": true,
-      "allowToChangeInstallationDirectory": true,
-      "installerIcon": "build/icon.ico",
-      "uninstallerIcon": "build/icon.ico",
-      "installerHeaderIcon": "build/icon.ico",
-      "createDesktopShortcut": true,
-      "createStartMenuShortcut": true,
-      "shortcutName": "思维导图应用"
-    },
 
-    "files": [
-      "main.js",
-      "index.html",
-      "script.js",
-      "style.css",
-      "package.json"
-    ],
-    "extraResources": [],
-    "asar": true
-  }
 }
