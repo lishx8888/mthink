@@ -41,9 +41,7 @@
       "createStartMenuShortcut": true,
       "shortcutName": "思维导图应用"
     },
-    "electronDownload": {
-      "mirror": "https://npm.taobao.org/mirrors/electron/"
-    },
+
     "files": [
       "main.js",
       "index.html",
