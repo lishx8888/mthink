@@ -1,9 +1,6 @@
 {
   "$schema": "https://schema.tauri.app/config/1.5",
   "build": {
-    "beforeDevCommand": "",
-    "beforeBuildCommand": "",
-    "devPath": "../index.html",
     "distDir": "../"
   },
   "package": {
@@ -11,31 +8,18 @@
     "version": "1.0.0"
   },
   "tauri": {
-    "allowlist": {
-      "all": false,
-      "shell": {
-        "all": false,
-        "open": true
-      }
-    },
     "bundle": {
       "active": true,
-      "targets": "nsis",
       "identifier": "com.mthink.app",
       "icon": [
         "icons/icon.ico"
       ]
     },
-    "security": {
-      "csp": "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:"
-    },
     "windows": [
       {
         "title": "思维导图应用",
         "width": 1000,
-        "height": 800,
-        "resizable": true,
-        "fullscreen": false
+        "height": 800
       }
     ]
   }
