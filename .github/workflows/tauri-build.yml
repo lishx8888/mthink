@@ -38,7 +38,9 @@ jobs:
         run: |
           Get-ChildItem -Force
           Get-ChildItem -Force src-tauri/
-          Get-ChildItem -Force src-tauri/icons/
+          if (Test-Path "src-tauri/icons/") {
+            Get-ChildItem -Force src-tauri/icons/
+          }
           npx tauri build --verbose
 
       - name: Upload artifacts
