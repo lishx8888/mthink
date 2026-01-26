@@ -29,6 +29,7 @@ jobs:
           NODE_OPTIONS: --max-old-space-size=4096
           ELECTRON_BUILDER_ALLOW_UNRESOLVED_DEPENDENCIES: true
           ELECTRON_BUILDER_SKIP_WIN_CODE_SIGN: true
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
