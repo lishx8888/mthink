@@ -39,8 +39,7 @@
       "installerHeaderIcon": "build/icon.ico",
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "思维导图应用",
-      "compression": "ultra"
+      "shortcutName": "思维导图应用"
     },
     "electronDownload": {
       "mirror": "https://npm.taobao.org/mirrors/electron/"
