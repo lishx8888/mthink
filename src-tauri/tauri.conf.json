@@ -1,8 +1,4 @@
 {
-  "$schema": "https://schema.tauri.app/config/1.5",
-  "build": {
-    "distDir": "../"
-  },
   "package": {
     "productName": "思维导图应用",
     "version": "1.0.0"
@@ -10,16 +6,11 @@
   "tauri": {
     "bundle": {
       "active": true,
-      "identifier": "com.mthink.app",
-      "icon": [
-        "icons/icon.ico"
-      ]
+      "identifier": "com.mthink.app"
     },
     "windows": [
       {
-        "title": "思维导图应用",
-        "width": 1000,
-        "height": 800
+        "title": "思维导图应用"
       }
     ]
   }
