@@ -18,9 +18,6 @@ custom-protocol = ["tauri/custom-protocol"]
 [build-dependencies]
 tauri-build = { version = "1.0.0" }
 
-[lib]
-crate-type = ["staticlib"]
-
 [[bin]]
 name = "mthink"
 path = "src/main.rs"
