@@ -2,20 +2,13 @@
   "name": "mthink",
   "version": "1.0.0",
   "description": "思维导图应用",
-  "main": "main.js",
   "scripts": {
-    "start": "tauri dev",
-    "build": "tauri build"
+    "start": "python -m http.server 8000"
   },
   "keywords": [
     "mindmap",
-    "tauri",
-    "desktop"
+    "web"
   ],
   "author": "",
-  "license": "MIT",
-  "devDependencies": {
-    "@tauri-apps/cli": "^1.0.0",
-    "@tauri-apps/api": "^1.0.0"
-  }
+  "license": "MIT"
 }
