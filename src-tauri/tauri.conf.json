@@ -1,6 +1,9 @@
 {
+  "build": {
+    "distDir": "../"
+  },
   "package": {
-    "productName": "思维导图应用",
+    "productName": "mthink",
     "version": "1.0.0"
   },
   "tauri": {
