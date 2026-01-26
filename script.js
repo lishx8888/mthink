@@ -664,34 +664,92 @@ class MindMap {
             // 生成Markdown格式（作为降级方案）
             const markdown = this.generateMarkdownCopy();
             
+            console.log('开始复制到剪贴板...');
+            
             // 首先尝试以图片格式复制
             this.generateImageCopy()
                 .then(imageBlob => {
-                    // 使用Clipboard API复制图片
-                    if (navigator.clipboard && navigator.clipboard.write) {
-                        navigator.clipboard.write([
-                            new ClipboardItem({ 'image/png': imageBlob })
-                        ])
-                        .then(() => {
-                            console.log('思维导图图片已复制到剪贴板');
-                        })
-                        .catch(err => {
-                            console.error('复制图片到剪贴板失败:', err);
-                            // 降级方案：使用文本格式
-                            this.fallbackCopyToClipboard(markdown);
-                        });
+                    console.log('图片生成成功，大小:', imageBlob.size, 'bytes');
+                    
+                    // 检查浏览器是否支持Clipboard API
+                    if (navigator.clipboard) {
+                        console.log('浏览器支持Clipboard API');
+                        
+                        // 检查是否支持write方法
+                        if (navigator.clipboard.write) {
+                            console.log('尝试使用Clipboard API复制图片');
+                            
+                            // 尝试复制图片
+                            navigator.clipboard.write([
+                                new ClipboardItem({ 'image/png': imageBlob })
+                            ])
+                            .then(() => {
+                                console.log('思维导图图片已成功复制到剪贴板');
+                            })
+                            .catch(err => {
+                                console.error('复制图片到剪贴板失败:', err);
+                                // 降级方案1：尝试使用writeText方法复制Markdown
+                                console.log('尝试降级为复制Markdown文本');
+                                if (navigator.clipboard.writeText) {
+                                    navigator.clipboard.writeText(markdown)
+                                        .then(() => {
+                                            console.log('思维导图Markdown已成功复制到剪贴板');
+                                        })
+                                        .catch(err2 => {
+                                            console.error('复制Markdown到剪贴板失败:', err2);
+                                            // 降级方案2：使用传统的execCommand方法
+                                            console.log('尝试使用传统方法复制文本');
+                                            this.fallbackCopyToClipboard(markdown);
+                                        });
+                                } else {
+                                    // 降级方案2：使用传统的execCommand方法
+                                    console.log('尝试使用传统方法复制文本');
+                                    this.fallbackCopyToClipboard(markdown);
+                                }
+                            });
+                        } else {
+                            console.log('浏览器不支持Clipboard API的write方法');
+                            // 降级方案1：尝试使用writeText方法
+                            if (navigator.clipboard.writeText) {
+                                console.log('尝试使用writeText方法复制Markdown');
+                                navigator.clipboard.writeText(markdown)
+                                    .then(() => {
+                                        console.log('思维导图Markdown已成功复制到剪贴板');
+                                    })
+                                    .catch(err => {
+                                        console.error('复制Markdown到剪贴板失败:', err);
+                                        // 降级方案2：使用传统的execCommand方法
+                                        console.log('尝试使用传统方法复制文本');
+                                        this.fallbackCopyToClipboard(markdown);
+                                    });
+                            } else {
+                                // 降级方案2：使用传统的execCommand方法
+                                console.log('尝试使用传统方法复制文本');
+                                this.fallbackCopyToClipboard(markdown);
+                            }
+                        }
                     } else {
-                        // 降级方案：使用文本格式
+                        console.log('浏览器不支持Clipboard API');
+                        // 降级方案：使用传统的execCommand方法
+                        console.log('尝试使用传统方法复制文本');
                         this.fallbackCopyToClipboard(markdown);
                     }
                 })
                 .catch(err => {
                     console.error('生成图片失败:', err);
                     // 降级方案：使用文本格式
+                    console.log('图片生成失败，尝试复制文本');
                     this.fallbackCopyToClipboard(markdown);
                 });
         } catch (error) {
             console.error('复制到剪贴板失败:', error);
+            // 最终降级方案：使用纯文本
+            try {
+                console.log('使用最终降级方案复制纯文本');
+                this.fallbackCopyToClipboard(plainText);
+            } catch (err) {
+                console.error('最终降级方案也失败:', err);
+            }
         }
     }
     
