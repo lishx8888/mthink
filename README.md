@@ -107,3 +107,46 @@ node server.js
 ## 许可证
 
 MIT License
+
+## 部署到Cloudflare Pages
+
+本项目可以轻松部署到Cloudflare Pages作为静态网站，实现全球范围内的快速访问。
+
+### 部署步骤（静态网站模式）
+
+#### 方法一：通过GitHub/GitLab集成（推荐）
+1. 将项目上传到GitHub或GitLab仓库
+2. 登录Cloudflare账户，进入Cloudflare Pages
+3. 点击"Create a project"
+4. 选择你的GitHub/GitLab仓库
+5. 配置构建设置：
+   - **Framework preset**: 选择 "None"
+   - **Build command**: 留空（因为不需要构建步骤）
+   - **Build output directory**: 留空（使用根目录）
+6. 点击"Save and Deploy"
+7. 等待部署完成，获取生成的URL
+
+#### 方法二：直接上传文件（推荐）
+1. 登录Cloudflare账户，进入Cloudflare Pages
+2. 点击"Create a project"
+3. 选择"Direct Upload"选项
+4. 上传项目文件（可以压缩为ZIP文件上传）
+5. 点击"Deploy"
+6. 等待部署完成，获取生成的URL
+
+### 注意事项
+- **避免Function部署**：确保项目中没有`/functions`目录，因为Cloudflare Pages会尝试部署该目录中的Function
+- **纯静态网站**：本项目是纯前端应用，不需要后端Function，应作为静态网站部署
+- **部署错误处理**：如果遇到"Failed to publish your Function"错误，说明Cloudflare尝试部署Function，请确保项目结构正确
+
+### 配置优化
+- **自定义域名**：可以绑定自己的域名到Cloudflare Pages
+- **HTTPS**：Cloudflare自动提供HTTPS证书
+- **缓存设置**：Cloudflare默认会缓存静态资源，提高加载速度
+- **CORS设置**：如果需要，在Cloudflare的页面规则中配置CORS头
+
+### 部署优势
+- **全球CDN**：Cloudflare的全球CDN网络确保用户从最近的节点访问，提高加载速度
+- **免费使用**：Cloudflare Pages的免费计划足够个人项目使用
+- **自动部署**：如果通过GitHub/GitLab集成，代码变更会自动触发部署
+- **高可靠性**：Cloudflare的网络具有高可用性和容错能力
