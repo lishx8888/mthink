@@ -2808,12 +2808,17 @@ class MindMap {
             }
         }
         
-        // 选中节点，确保选中状态和横线正确显示
-        this.selectNode(node);
-        
         // 设置编辑状态为true
         this.isEditingNode = true;
         this.currentEditingNode = node;
+        
+        // 选中节点，确保选中状态和横线正确显示
+        this.selectNode(node);
+        
+        // 触发实时布局（因为前面节点的内容可能已经变化）
+        // 由于已经设置了isEditingNode为true，triggerRealTimeLayout会跳过执行
+        // 这样可以确保编辑状态不被布局过程打断
+        this.triggerRealTimeLayout();
         
         const nodeGroup = document.getElementById(`node-${node.id}`);
         if (!nodeGroup) {
@@ -6471,7 +6476,7 @@ class MindMap {
     // 触发实时布局
     triggerRealTimeLayout() {
         // 方案一：适用于所有思维导图
-        if (this.isRealTimeLayoutEnabled) {
+        if (this.isRealTimeLayoutEnabled && !this.isEditingNode) {
             this.debouncedLayout();
         }
     }
