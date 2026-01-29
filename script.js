@@ -2851,7 +2851,8 @@ class MindMap {
         
         // 设置textarea样式 - 确保文本选择功能正常
         textarea.style.width = '100%';
-        textarea.style.height = '100%';
+        textarea.style.height = 'auto';
+        textarea.style.minHeight = '100%';
         textarea.style.border = 'none';
         textarea.style.background = 'transparent';
         textarea.style.fontSize = `${node.style.fontSize}px`;
@@ -2861,7 +2862,7 @@ class MindMap {
         textarea.style.outline = 'none';
         textarea.style.padding = '0';
         textarea.style.resize = 'none';
-        textarea.style.overflow = 'hidden';
+        textarea.style.overflow = 'auto';
         textarea.style.whiteSpace = 'pre-wrap';
         textarea.style.wordWrap = 'break-word';
         textarea.style.lineHeight = '1.4';
@@ -3164,6 +3165,11 @@ class MindMap {
         
         // 添加编辑元素到节点组
         nodeGroup.appendChild(textInput);
+        
+        // 确保节点组在画布的最上层
+        if (nodeGroup.parentNode) {
+            nodeGroup.parentNode.appendChild(nodeGroup);
+        }
         
         // 聚焦文本框 - 允许光标选择
         setTimeout(() => {
