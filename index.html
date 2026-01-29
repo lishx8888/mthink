@@ -5,8 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>思维导图应用</title>
     <link rel="stylesheet" href="style.css">
-    <link rel="icon" href="build/icon.ico" type="image/x-icon">
-    <link rel="shortcut icon" href="build/icon.ico" type="image/x-icon">
+    <link rel="icon" href="images/icon.ico" type="image/x-icon">
+    <link rel="shortcut icon" href="images/icon.ico" type="image/x-icon">
 </head>
 <body>
     <div class="container">
@@ -56,10 +56,14 @@
                     <button id="loadMap" class="panel-button">加载</button>
                     <button id="exportMap" class="panel-button">导出</button>
                     <button id="autoLayout" class="panel-button">手动布局</button>
-                    <div class="panel-control-group">
-                        <label for="realTimeLayoutToggle" style="margin-right: 5px;">实时布局:</label>
-                        <input type="checkbox" id="realTimeLayoutToggle" checked>
+                    <div class="panel-control-group real-time-layout-container">
+                        <label for="realTimeLayoutToggle">实时布局:</label>
+                        <label class="switch">
+                            <input type="checkbox" id="realTimeLayoutToggle" checked>
+                            <span class="slider"></span>
+                        </label>
                     </div>
+                    <button id="centerNode" class="panel-button">中心节点</button>
                 </div>
                 <h3>样式设置</h3>
                 <!-- 颜色设置组 - 两行两列布局 -->
@@ -141,6 +145,24 @@
                             <span class="color-swatch" style="background-color: #32cd32"></span>
                         </div>
                         <input type="color" id="connectionColor" value="#000000" class="custom-color-picker">
+                    </div>
+                </div>
+                <!-- 节点形状选择器 -->
+                <div class="style-group">
+                    <label>节点形状:</label>
+                    <div class="shape-picker">
+                        <div class="shape-option" data-shape="track">
+                            <svg width="60" height="30" viewBox="0 0 60 30">
+                                <path d="M15 0 L45 0 A15 15 0 0 1 60 15 L60 15 A15 15 0 0 1 45 30 L15 30 A15 15 0 0 1 0 15 L0 15 A15 15 0 0 1 15 0 Z" fill="#ffffff" stroke="#000000" stroke-width="1"></path>
+                            </svg>
+                            <span>跑道形</span>
+                        </div>
+                        <div class="shape-option" data-shape="rounded-rect">
+                            <svg width="60" height="30" viewBox="0 0 60 30">
+                                <rect x="0" y="0" width="60" height="30" rx="8" ry="8" fill="#ffffff" stroke="#000000" stroke-width="1"></rect>
+                            </svg>
+                            <span>圆角矩形</span>
+                        </div>
                     </div>
                 </div>
                 <!-- 字体设置组 - 跨两列布局 -->

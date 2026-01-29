@@ -15,7 +15,8 @@ class Node {
             borderColor: '#000000',
             fontColor: '#000000',
             fontSize: 14,
-            fontFamily: 'Arial'
+            fontFamily: 'Arial',
+            shape: 'rounded-rect'
         };
         this.width = 0;
         this.height = 0;
@@ -151,21 +152,40 @@ class MindMap {
         this.initMobileLayout();
         this.initRealTimeLayoutToggle();
         
-        // 初始化画布偏移量，将(0,0)设置为页面中心
-        this.resizeCanvas();
+        // 初始化画布偏移量，默认不居中
+        this.canvasOffsetX = 0;
+        this.canvasOffsetY = 0;
         
         // 添加窗口大小变化事件监听
         window.addEventListener('resize', this.resizeCanvas);
         
-        this.render();
+        // 只有初始节点时，初次打开时将其显示在页面中央
+        if (this.nodes.length === 1 && this.rootNode && this.rootNode.nodeNumber === "0") {
+            this.centerOnRootNode();
+        } else {
+            this.render();
+        }
     }
     
     // 初始化手机布局处理
-    // 调整画布大小和偏移量，将(0,0)设置为页面中心
+    // 调整画布大小，保持当前偏移量
     resizeCanvas() {
         const canvasRect = this.canvas.getBoundingClientRect();
-        this.canvasOffsetX = canvasRect.width / 2;
-        this.canvasOffsetY = canvasRect.height / 2;
+        // 只获取画布尺寸，不修改偏移量
+    }
+
+    // 将中心节点显示在页面中央
+    centerOnRootNode() {
+        // 直接查找nodeNumber为"0"的节点，确保始终是初始中心节点
+        const centerNode = this.nodes.find(node => node.nodeNumber === "0");
+        if (centerNode) {
+            const canvasRect = this.canvas.getBoundingClientRect();
+            const canvasWidth = canvasRect.width;
+            const canvasHeight = canvasRect.height;
+            this.canvasOffsetX = canvasWidth / 2 - centerNode.x;
+            this.canvasOffsetY = canvasHeight / 2 - centerNode.y;
+            this.render();
+        }
     }
     
     initMobileLayout() {
@@ -276,6 +296,16 @@ class MindMap {
         node.text = text || "";
         node.width = 400; // 默认节点宽度设置为400px
         node.height = 45; // 默认节点高度设置为45px
+        
+        // 使用当前从样式设置中选择的节点形状
+        const selectedShapeOption = document.querySelector('.shape-option.selected');
+        if (selectedShapeOption) {
+            const shape = selectedShapeOption.getAttribute('data-shape');
+            if (shape) {
+                node.style.shape = shape;
+            }
+        }
+        
         this.nodes.push(node);
         
         const parentsArray = Array.isArray(parents) ? parents : [parents].filter(p => p !== null);
@@ -1295,8 +1325,8 @@ class MindMap {
                 // 创建选中时的底部横线
                 const bottomLine = document.createElementNS('http://www.w3.org/2000/svg', 'line');
                 const lineY = node.y + node.height / 2 + 10; // 在节点底部下方10像素处
-                // 计算底部横边的长度：总宽度减去两端半圆的直径
-                const lineLength = node.width - node.height;
+                // 计算底部横边的长度：总宽度减去两端半圆的直径（仅适用于跑道形）
+                const lineLength = (node.style.shape === 'track') ? (node.width - node.height) : node.width;
                 // 确保横线居中显示
                 bottomLine.setAttribute('x1', node.x - lineLength / 2);
                 bottomLine.setAttribute('y1', lineY);
@@ -1315,23 +1345,42 @@ class MindMap {
             
             const width = node.width;
             const height = node.height;
-            const radius = height / 2;
             const x = node.x - width / 2;
             const y = node.y - height / 2;
             
-            // 绘制跑道形状路径
-            const pathData = [
-                `M${x + radius} ${y}`,
-                `L${x + width - radius} ${y}`,
-                `A${radius} ${radius} 0 0 1 ${x + width} ${y + radius}`,
-                `L${x + width} ${y + height - radius}`,
-                `A${radius} ${radius} 0 0 1 ${x + width - radius} ${y + height}`,
-                `L${x + radius} ${y + height}`,
-                `A${radius} ${radius} 0 0 1 ${x} ${y + height - radius}`,
-                `L${x} ${y + radius}`,
-                `A${radius} ${radius} 0 0 1 ${x + radius} ${y}`,
-                'Z'
-            ].join(' ');
+            // 根据节点形状生成不同的路径数据
+            let pathData;
+            if (node.style.shape === 'track') {
+                // 跑道形状（圆角矩形 + 两端半圆）
+                const radius = height / 2;
+                pathData = [
+                    `M${x + radius} ${y}`,
+                    `L${x + width - radius} ${y}`,
+                    `A${radius} ${radius} 0 0 1 ${x + width} ${y + radius}`,
+                    `L${x + width} ${y + height - radius}`,
+                    `A${radius} ${radius} 0 0 1 ${x + width - radius} ${y + height}`,
+                    `L${x + radius} ${y + height}`,
+                    `A${radius} ${radius} 0 0 1 ${x} ${y + height - radius}`,
+                    `L${x} ${y + radius}`,
+                    `A${radius} ${radius} 0 0 1 ${x + radius} ${y}`,
+                    'Z'
+                ].join(' ');
+            } else if (node.style.shape === 'rounded-rect') {
+                // 圆角矩形形状
+                const radius = Math.min(height / 3, 15); // 圆角半径
+                pathData = [
+                    `M${x + radius} ${y}`,
+                    `L${x + width - radius} ${y}`,
+                    `A${radius} ${radius} 0 0 1 ${x + width} ${y + radius}`,
+                    `L${x + width} ${y + height - radius}`,
+                    `A${radius} ${radius} 0 0 1 ${x + width - radius} ${y + height}`,
+                    `L${x + radius} ${y + height}`,
+                    `A${radius} ${radius} 0 0 1 ${x} ${y + height - radius}`,
+                    `L${x} ${y + radius}`,
+                    `A${radius} ${radius} 0 0 1 ${x + radius} ${y}`,
+                    'Z'
+                ].join(' ');
+            }
             
             rectPath.setAttribute('d', pathData);
             rectPath.setAttribute('fill', node.style.nodeColor);
@@ -1340,58 +1389,105 @@ class MindMap {
             
             // 为了保持事件监听一致性，将rectPath赋值给rect变量
             const rect = rectPath;
+        
+            // 定义扩大的半径，用于点击区域
+            const expandedRadius = height / 2 + 5; // 扩大5px以确保更好的点击体验
+        
+        // 创建左侧点击区域（添加父节点）
+        let leftClickArea;
+        if (node.style.shape === 'track') {
+            // 跑道形状：左侧半圆形点击区域
+            leftClickArea = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        } else if (node.style.shape === 'rounded-rect') {
+            // 圆角矩形形状：左侧带圆角的点击区域
+            leftClickArea = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        }
+        // 根据节点形状设置不同的点击区域属性
+        if (node.style.shape === 'track') {
+            // 跑道形状：设置半圆形路径（位于节点框内，左侧20px宽度，跟随半圆曲线）
+            const radius = height / 2;
+            const leftPathData = `M${x} ${y + radius} A${radius} ${radius} 0 0 1 ${x + radius} ${y} L${x + 20} ${y} L${x + 20} ${y + height} L${x + radius} ${y + height} A${radius} ${radius} 0 0 1 ${x} ${y + radius} Z`;
+            leftClickArea.setAttribute('d', leftPathData);
+            leftClickArea.setAttribute('class', 'left-semicircle');
+        } else if (node.style.shape === 'rounded-rect') {
+            // 圆角矩形形状：设置带圆角的路径（位于节点框内，左侧20px宽度，保留左侧半边圆角，与右侧水平镜像）
+            const radius = Math.min(height / 3, 15); // 与节点相同的圆角半径
+            const leftPathData = `M${x + radius} ${y} L${x + 20} ${y} L${x + 20} ${y + height} L${x + radius} ${y + height} A${radius} ${radius} 0 0 1 ${x} ${y + height - radius} L${x} ${y + radius} A${radius} ${radius} 0 0 1 ${x + radius} ${y} Z`;
+            leftClickArea.setAttribute('d', leftPathData);
+            leftClickArea.setAttribute('class', 'left-rectangle');
+        }
+        
+        // 设置通用属性
+        if (leftClickArea) {
+            leftClickArea.setAttribute('fill', 'rgba(0, 0, 0, 0.01)'); // 默认透明，只有在鼠标悬停时才显示
+            leftClickArea.setAttribute('stroke', 'none');
+        }
+        
+        // 左侧点击事件
+        if (leftClickArea) {
+            leftClickArea.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.addParentNode(node);
+            });
             
-        // 扩大点击区域：水平扩展2像素，垂直方向各扩展2像素，与视觉阴影区域匹配
-        const expandedRadius = radius + 2;
-        
-        // 创建左侧半圆形点击区域（添加父节点）
-        const leftSemiCircle = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-        // 使用与节点左侧半圆匹配且扩大的路径，确保点击区域与视觉阴影区域一致
-        const leftPathData = `M${x - 2} ${y + expandedRadius} A${expandedRadius} ${expandedRadius} 0 0 1 ${x + expandedRadius} ${y - 2} L${x + expandedRadius} ${y + height + 2} A${expandedRadius} ${expandedRadius} 0 0 1 ${x - 2} ${y + expandedRadius} Z`;
-        leftSemiCircle.setAttribute('d', leftPathData);
-        leftSemiCircle.setAttribute('fill', 'rgba(0, 0, 0, 0.01)'); // 使用几乎透明的颜色，但确保可以点击
-        leftSemiCircle.setAttribute('stroke', 'none');
-        leftSemiCircle.setAttribute('class', 'left-semicircle');
-        
-        // 左侧半圆点击事件
-        leftSemiCircle.addEventListener('click', (e) => {
-            e.stopPropagation();
-            this.addParentNode(node);
-        });
-        
-        // 左侧半圆悬停效果
-        leftSemiCircle.addEventListener('mouseenter', () => {
-            leftSemiCircle.setAttribute('fill', 'rgba(0, 0, 0, 0.15)');
-        });
-        
-        leftSemiCircle.addEventListener('mouseleave', () => {
-            leftSemiCircle.setAttribute('fill', 'rgba(0, 0, 0, 0.01)'); // 恢复几乎透明的状态
-        });
+            // 左侧悬停效果
+            leftClickArea.addEventListener('mouseenter', () => {
+                leftClickArea.setAttribute('fill', 'rgba(0, 0, 0, 0.5)'); // 所有节点形状都使用相同的深色效果，确保鼠标悬停时会明显加深
+                leftClickArea.removeAttribute('filter'); // 移除阴影效果
+            });
             
-            // 创建右侧半圆形点击区域（添加子节点）
-        const rightSemiCircle = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-        // 使用与节点右侧半圆匹配且扩大的路径，确保点击区域与视觉阴影区域一致
-        // 关键修复：将sweep-flag从1改为0，使用逆时针方向绘制半圆
-        const rightPathData = `M${x + width + 2} ${y + expandedRadius} A${expandedRadius} ${expandedRadius} 0 0 0 ${x + width - expandedRadius} ${y - 2} L${x + width - expandedRadius} ${y + height + 2} A${expandedRadius} ${expandedRadius} 0 0 0 ${x + width + 2} ${y + expandedRadius} Z`;
-        rightSemiCircle.setAttribute('d', rightPathData);
-        rightSemiCircle.setAttribute('fill', 'rgba(0, 0, 0, 0.01)'); // 使用几乎透明的颜色，但确保可以点击
-        rightSemiCircle.setAttribute('stroke', 'none');
-        rightSemiCircle.setAttribute('class', 'right-semicircle');
+            leftClickArea.addEventListener('mouseleave', () => {
+                leftClickArea.setAttribute('fill', 'rgba(0, 0, 0, 0.01)'); // 恢复透明状态，与跑道形处理方式一致
+            });
+        }
+            
+            // 创建右侧点击区域（添加子节点）
+        let rightClickArea;
+        if (node.style.shape === 'track') {
+            // 跑道形状：右侧半圆形点击区域
+            rightClickArea = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        } else if (node.style.shape === 'rounded-rect') {
+            // 圆角矩形形状：右侧带圆角的点击区域
+            rightClickArea = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        }
+        // 根据节点形状设置不同的点击区域属性
+        if (node.style.shape === 'track') {
+            // 跑道形状：设置半圆形路径（位于节点框内，右侧20px宽度，跟随半圆曲线）
+            const radius = height / 2;
+            const rightPathData = `M${x + width - 20} ${y} L${x + width - radius} ${y} A${radius} ${radius} 0 0 1 ${x + width} ${y + radius} L${x + width} ${y + height - radius} A${radius} ${radius} 0 0 1 ${x + width - radius} ${y + height} L${x + width - 20} ${y + height} Z`;
+            rightClickArea.setAttribute('d', rightPathData);
+            rightClickArea.setAttribute('class', 'right-semicircle');
+        } else if (node.style.shape === 'rounded-rect') {
+            // 圆角矩形形状：设置带圆角的路径（位于节点框内，右侧20px宽度，保留半边圆角）
+            const radius = Math.min(height / 3, 15); // 与节点相同的圆角半径
+            const rightPathData = `M${x + width - 20} ${y} L${x + width - radius} ${y} A${radius} ${radius} 0 0 1 ${x + width} ${y + radius} L${x + width} ${y + height - radius} A${radius} ${radius} 0 0 1 ${x + width - radius} ${y + height} L${x + width - 20} ${y + height} Z`;
+            rightClickArea.setAttribute('d', rightPathData);
+            rightClickArea.setAttribute('class', 'right-rectangle');
+        }
         
-        // 右侧半圆点击事件
-        rightSemiCircle.addEventListener('click', (e) => {
-            e.stopPropagation();
-            this.addChildNode(node);
-        });
+        // 设置通用属性
+        if (rightClickArea) {
+            rightClickArea.setAttribute('fill', 'rgba(0, 0, 0, 0.01)'); // 默认透明，只有在鼠标悬停时才显示
+            rightClickArea.setAttribute('stroke', 'none');
+        }
         
-        // 右侧半圆悬停效果
-        rightSemiCircle.addEventListener('mouseenter', () => {
-            rightSemiCircle.setAttribute('fill', 'rgba(0, 0, 0, 0.15)');
-        });
-        
-        rightSemiCircle.addEventListener('mouseleave', () => {
-            rightSemiCircle.setAttribute('fill', 'rgba(0, 0, 0, 0.01)'); // 恢复几乎透明的状态
-        });
+        // 右侧点击事件
+        if (rightClickArea) {
+            rightClickArea.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.addChildNode(node);
+            });
+            
+            // 右侧悬停效果
+            rightClickArea.addEventListener('mouseenter', () => {
+                rightClickArea.setAttribute('fill', 'rgba(0, 0, 0, 0.5)'); // 所有节点形状都使用相同的深色效果，确保鼠标悬停时会明显加深
+                rightClickArea.removeAttribute('filter'); // 移除阴影效果
+            });
+            
+            rightClickArea.addEventListener('mouseleave', () => {
+                rightClickArea.setAttribute('fill', 'rgba(0, 0, 0, 0.01)'); // 恢复透明状态，与跑道形处理方式一致
+            });
+        }
             
             // 创建foreignObject用于支持多行文本
             const foreignObject = document.createElementNS('http://www.w3.org/2000/svg', 'foreignObject');
@@ -1489,14 +1585,17 @@ class MindMap {
             // 添加到画布 - 调整顺序，确保按钮位于文本区域之上
             nodeGroup.appendChild(rect);
             nodeGroup.appendChild(foreignObject);
-            nodeGroup.appendChild(leftSemiCircle);
-            nodeGroup.appendChild(rightSemiCircle);
+            if (leftClickArea) {
+                nodeGroup.appendChild(leftClickArea);
+            }
+            if (rightClickArea) {
+                nodeGroup.appendChild(rightClickArea);
+            }
             this.canvas.appendChild(nodeGroup);
             
             // 渲染所有子节点
             node.children.forEach(child => renderNodeHelper(child));
-        };
-        
+        };        
         // 首先渲染所有根节点及其子树
         const allRootNodes = this.getRootNodes();
         allRootNodes.forEach(rootNode => {
@@ -2970,24 +3069,43 @@ class MindMap {
             textarea.style.width = `${textWidth}px`;
             textarea.style.height = `${textHeight}px`;
             
-            // 更新跑道形状
+            // 更新节点形状
             if (rectPath) {
-                const radius = node.height / 2;
                 const x = node.x - node.width / 2;
                 const y = node.y - node.height / 2;
+                let pathData;
                 
-                const pathData = [
-                    `M${x + radius} ${y}`,
-                    `L${x + node.width - radius} ${y}`,
-                    `A${radius} ${radius} 0 0 1 ${x + node.width} ${y + radius}`,
-                    `L${x + node.width} ${y + node.height - radius}`,
-                    `A${radius} ${radius} 0 0 1 ${x + node.width - radius} ${y + node.height}`,
-                    `L${x + radius} ${y + node.height}`,
-                    `A${radius} ${radius} 0 0 1 ${x} ${y + node.height - radius}`,
-                    `L${x} ${y + radius}`,
-                    `A${radius} ${radius} 0 0 1 ${x + radius} ${y}`,
-                    'Z'
-                ].join(' ');
+                if (node.style.shape === 'track') {
+                    // 跑道形状（圆角矩形 + 两端半圆）
+                    const radius = node.height / 2;
+                    pathData = [
+                        `M${x + radius} ${y}`,
+                        `L${x + node.width - radius} ${y}`,
+                        `A${radius} ${radius} 0 0 1 ${x + node.width} ${y + radius}`,
+                        `L${x + node.width} ${y + node.height - radius}`,
+                        `A${radius} ${radius} 0 0 1 ${x + node.width - radius} ${y + node.height}`,
+                        `L${x + radius} ${y + node.height}`,
+                        `A${radius} ${radius} 0 0 1 ${x} ${y + node.height - radius}`,
+                        `L${x} ${y + radius}`,
+                        `A${radius} ${radius} 0 0 1 ${x + radius} ${y}`,
+                        'Z'
+                    ].join(' ');
+                } else if (node.style.shape === 'rounded-rect') {
+                    // 圆角矩形形状
+                    const radius = Math.min(node.height / 3, 15); // 圆角半径
+                    pathData = [
+                        `M${x + radius} ${y}`,
+                        `L${x + node.width - radius} ${y}`,
+                        `A${radius} ${radius} 0 0 1 ${x + node.width} ${y + radius}`,
+                        `L${x + node.width} ${y + node.height - radius}`,
+                        `A${radius} ${radius} 0 0 1 ${x + node.width - radius} ${y + node.height}`,
+                        `L${x + radius} ${y + node.height}`,
+                        `A${radius} ${radius} 0 0 1 ${x} ${y + node.height - radius}`,
+                        `L${x} ${y + radius}`,
+                        `A${radius} ${radius} 0 0 1 ${x + radius} ${y}`,
+                        'Z'
+                    ].join(' ');
+                }
                 
                 rectPath.setAttribute('d', pathData);
             }
@@ -3142,7 +3260,7 @@ class MindMap {
         }
     }
     
-    updateNodeStyle(updatedProperties) {
+    updateNodeStyle(updatedProperties, shape) {
         if (this.selectedNodes.length === 0) return;
         
         // 保存状态到历史记录
@@ -3184,6 +3302,9 @@ class MindMap {
             }
             if (updatedProperties.includes('fontFamily') && stylePanelValues.fontFamily !== node.style.fontFamily) {
                 updatedStyle.fontFamily = stylePanelValues.fontFamily;
+            }
+            if (updatedProperties.includes('shape') && shape !== undefined) {
+                updatedStyle.shape = shape;
             }
             
             node.updateStyle(updatedStyle);
@@ -3242,7 +3363,12 @@ class MindMap {
                     parents: node.parents.map(parent => ({ id: parent.id }))
                 })),
                 nextNodeId: this.nextNodeId,
-                connectionColor: this.connectionColor
+                connectionColor: this.connectionColor,
+                // 保存窗口位置信息
+                windowPosition: {
+                    canvasOffsetX: this.canvasOffsetX,
+                    canvasOffsetY: this.canvasOffsetY
+                }
             };
             
             const content = JSON.stringify(mapData, null, 2);
@@ -3295,7 +3421,12 @@ class MindMap {
                             parents: node.parents.map(parent => ({ id: parent.id }))
                         })),
                         nextNodeId: this.nextNodeId,
-                        connectionColor: this.connectionColor
+                        connectionColor: this.connectionColor,
+                        // 保存窗口位置信息
+                        windowPosition: {
+                            canvasOffsetX: this.canvasOffsetX,
+                            canvasOffsetY: this.canvasOffsetY
+                        }
                     };
                     
                     content = JSON.stringify(mapData, null, 2);
@@ -3902,6 +4033,35 @@ class MindMap {
                         }
                     }
                     
+                    // 恢复窗口位置信息
+                    if (mapData.windowPosition) {
+                        this.canvasOffsetX = mapData.windowPosition.canvasOffsetX || 0;
+                        this.canvasOffsetY = mapData.windowPosition.canvasOffsetY || 0;
+                    }
+                    
+                    // 确保中心节点的属性正确设置
+                    if (this.nodes.length > 0) {
+                        // 查找所有nodeNumber为"0"的节点
+                        const zeroNodes = this.nodes.filter(node => node.nodeNumber === "0");
+                        
+                        // 如果有多个nodeNumber为"0"的节点，只保留第一个，其他的重新编号
+                        if (zeroNodes.length > 1) {
+                            zeroNodes[0].isCenterNode = true; // 第一个作为中心节点
+                            // 其他的重新编号为负号开头的编号
+                            for (let i = 1; i < zeroNodes.length; i++) {
+                                zeroNodes[i].nodeNumber = `-${i}`;
+                                zeroNodes[i].isCenterNode = false;
+                            }
+                        } else if (zeroNodes.length === 1) {
+                            // 只有一个nodeNumber为"0"的节点，标记为中心节点
+                            zeroNodes[0].isCenterNode = true;
+                        } else {
+                            // 没有nodeNumber为"0"的节点，选择第一个节点作为中心节点
+                            this.nodes[0].nodeNumber = "0";
+                            this.nodes[0].isCenterNode = true;
+                        }
+                    }
+                    
                     this.render();
                     
 
@@ -4441,6 +4601,12 @@ class MindMap {
             autoLayoutBtn.addEventListener('click', () => this.autoLayout());
         }
         
+        // 中心节点按钮事件
+        const centerNodeBtn = document.getElementById('centerNode');
+        if (centerNodeBtn) {
+            centerNodeBtn.addEventListener('click', () => this.centerOnRootNode());
+        }
+        
         // 自定义导出弹窗事件
         this.initExportDialogListeners();
         
@@ -4523,6 +4689,21 @@ class MindMap {
             }
             return rgb; // 如果不是RGB格式，直接返回
         }
+        
+        // 节点形状选择器事件监听
+        const shapeOptions = document.querySelectorAll('.shape-option');
+        shapeOptions.forEach(function(option) {
+            option.addEventListener('click', function() {
+                // 移除所有选项的选中状态
+                shapeOptions.forEach(opt => opt.classList.remove('selected'));
+                // 添加当前选项的选中状态
+                this.classList.add('selected');
+                // 获取选中的形状
+                const shape = this.getAttribute('data-shape');
+                // 更新选中节点的形状
+                self.updateNodeStyle(['shape'], shape);
+            });
+        });
         
         // 十六进制转RGB函数
         function hexToRgb(hex) {
@@ -5539,6 +5720,55 @@ class MindMap {
         path.setAttribute('stroke-width', '1');
         
         group.appendChild(path);
+        
+        // 添加节点文本（支持多行显示）
+        if (node.text) {
+            // 计算节点在缩略图中的宽度
+            const scaledNodeWidth = node.width * this.thumbnailScale;
+            
+            // 按照与节点相同的比例缩小字体大小
+            const originalFontSize = node.style.fontSize || 14;
+            const scaledFontSize = originalFontSize * this.thumbnailScale;
+            
+            // 计算边距，按比例缩小
+            const leftPadding = 10 * this.thumbnailScale; // 与主画布相同的左边距比例
+            const rightPadding = 10 * this.thumbnailScale; // 与主画布相同的右边距比例
+            
+            // 使用主画布的自动换行结果，保持一致的换行模式
+            const textLines = node.wrappedText ? node.wrappedText : node.text.split('\n');
+            
+            // 计算行高，与主画布保持一致的比例
+            const lineHeight = scaledFontSize * 1.4; // 与主画布相同的行高倍数
+            
+            // 限制显示的行数，避免在缩略图中占用过多空间
+            const maxLines = 5;
+            const displayLines = textLines.slice(0, maxLines);
+            
+            // 计算文本的起始Y坐标，使多行文本居中显示
+            const startY = finalY - (displayLines.length - 1) * lineHeight / 2;
+            
+            // 为每一行创建一个文本元素
+            displayLines.forEach((line, index) => {
+                // 使用外部计算的变量，确保一致性
+                
+                // 直接使用主画布的换行结果，保持一致的布局
+                const displayText = line;
+                
+                const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                // 左对齐显示，与画布中保持一致
+                text.setAttribute('x', finalX - scaledNodeWidth / 2 + leftPadding);
+                text.setAttribute('y', startY + index * lineHeight);
+                text.setAttribute('text-anchor', 'start');
+                text.setAttribute('dominant-baseline', 'middle');
+                text.setAttribute('font-size', `${scaledFontSize}px`);
+                text.setAttribute('fill', node.style.fontColor || '#000000');
+                text.setAttribute('font-family', node.style.fontFamily || 'Arial, sans-serif');
+                text.textContent = displayText;
+                
+                group.appendChild(text);
+            });
+        }
+        
         this.thumbnailCanvas.appendChild(group);
     }
     
@@ -5570,13 +5800,24 @@ class MindMap {
         const finalChildX = thumbnailOriginX + (childNode.x - boundingBox.minX) * this.thumbnailScale;
         const finalChildY = thumbnailOriginY + (childNode.y - boundingBox.minY) * this.thumbnailScale;
         
+        // 计算节点宽度和高度（缩放后）
+        const parentWidth = parentNode.width * this.thumbnailScale;
+        const childWidth = childNode.width * this.thumbnailScale;
+        
+        // 计算父节点右侧端点和子节点左侧端点位置
+        const parentRightX = finalParentX + parentWidth / 2;
+        const parentRightY = finalParentY;
+        const childLeftX = finalChildX - childWidth / 2;
+        const childLeftY = finalChildY;
+        
         // 设置连接线的属性
-        line.setAttribute('x1', finalParentX);
-        line.setAttribute('y1', finalParentY);
-        line.setAttribute('x2', finalChildX);
-        line.setAttribute('y2', finalChildY);
+        line.setAttribute('x1', parentRightX);
+        line.setAttribute('y1', parentRightY);
+        line.setAttribute('x2', childLeftX);
+        line.setAttribute('y2', childLeftY);
         line.setAttribute('stroke', this.connectionColor);
         line.setAttribute('stroke-width', '0.5');
+        line.setAttribute('pointer-events', 'none');
         
         this.thumbnailCanvas.appendChild(line);
     }
@@ -7249,3 +7490,4 @@ document.addEventListener('DOMContentLoaded', () => {
     const mindMap = new MindMap('mindMapCanvas');
     window.mindMap = mindMap; // 方便调试
 });
+
