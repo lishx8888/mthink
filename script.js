@@ -145,12 +145,31 @@ class MindMap {
         
         // 绑定实时布局相关函数
         this.triggerRealTimeLayout = this.triggerRealTimeLayout.bind(this);
-        this.debouncedLayout = this.debounce(() => this.autoLayout(false), this.debounceDelay);
+        this.debouncedLayout = this.debounce(() => {
+            // 保存编辑状态
+            const isEditing = this.isEditingNode;
+            const editingNode = this.currentEditingNode;
+            
+            // 执行布局
+            this.autoLayout(false);
+            
+            // 恢复编辑状态
+            if (isEditing && editingNode) {
+                this.isEditingNode = true;
+                this.currentEditingNode = editingNode;
+                
+                // 重新创建编辑框
+                setTimeout(() => {
+                    this.editNodeText(editingNode);
+                }, 0);
+            }
+        }, this.debounceDelay);
         
         this.initEventListeners();
         this.initThumbnail();
         this.initMobileLayout();
         this.initRealTimeLayoutToggle();
+        this.initShapePicker();
         
         // 初始化画布偏移量，默认不居中
         this.canvasOffsetX = 0;
@@ -1419,8 +1438,9 @@ class MindMap {
         
         // 设置通用属性
         if (leftClickArea) {
-            leftClickArea.setAttribute('fill', 'rgba(0, 0, 0, 0.01)'); // 默认透明，只有在鼠标悬停时才显示
+            leftClickArea.setAttribute('fill', 'none'); // 默认完全透明，只有在鼠标悬停时才显示
             leftClickArea.setAttribute('stroke', 'none');
+            leftClickArea.setAttribute('pointer-events', 'all'); // 确保点击区域能够接收鼠标事件
         }
         
         // 左侧点击事件
@@ -1437,7 +1457,7 @@ class MindMap {
             });
             
             leftClickArea.addEventListener('mouseleave', () => {
-                leftClickArea.setAttribute('fill', 'rgba(0, 0, 0, 0.01)'); // 恢复透明状态，与跑道形处理方式一致
+                leftClickArea.setAttribute('fill', 'none'); // 恢复完全透明状态，与跑道形处理方式一致
             });
         }
             
@@ -1467,8 +1487,9 @@ class MindMap {
         
         // 设置通用属性
         if (rightClickArea) {
-            rightClickArea.setAttribute('fill', 'rgba(0, 0, 0, 0.01)'); // 默认透明，只有在鼠标悬停时才显示
+            rightClickArea.setAttribute('fill', 'none'); // 默认完全透明，只有在鼠标悬停时才显示
             rightClickArea.setAttribute('stroke', 'none');
+            rightClickArea.setAttribute('pointer-events', 'all'); // 确保点击区域能够接收鼠标事件
         }
         
         // 右侧点击事件
@@ -1485,7 +1506,7 @@ class MindMap {
             });
             
             rightClickArea.addEventListener('mouseleave', () => {
-                rightClickArea.setAttribute('fill', 'rgba(0, 0, 0, 0.01)'); // 恢复透明状态，与跑道形处理方式一致
+                rightClickArea.setAttribute('fill', 'none'); // 恢复完全透明状态，与跑道形处理方式一致
             });
         }
             
@@ -6508,6 +6529,35 @@ class MindMap {
             realTimeLayoutToggle.addEventListener('change', (e) => {
                 this.toggleRealTimeLayout(e.target.checked);
             });
+        }
+    }
+    
+    // 初始化形状选择器
+    initShapePicker() {
+        const shapeOptions = document.querySelectorAll('.shape-option');
+        if (shapeOptions.length > 0) {
+            shapeOptions.forEach(option => {
+                option.addEventListener('click', () => {
+                    // 移除所有选中状态
+                    shapeOptions.forEach(opt => opt.classList.remove('selected'));
+                    // 添加当前选中状态
+                    option.classList.add('selected');
+                    
+                    const shape = option.getAttribute('data-shape');
+                    if (shape) {
+                        // 更新选中节点的形状
+                        if (this.selectedNodes.length > 0) {
+                            this.updateNodeStyle(['shape'], shape);
+                        }
+                    }
+                });
+            });
+            
+            // 默认选中圆角矩形
+            const roundedRectOption = document.querySelector('.shape-option[data-shape="rounded-rect"]');
+            if (roundedRectOption) {
+                roundedRectOption.classList.add('selected');
+            }
         }
     }
     
