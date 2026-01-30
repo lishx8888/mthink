@@ -2864,6 +2864,14 @@ class MindMap {
             fo.style.display = 'none';
         });
         
+        // 获取并隐藏所有添加子节点的按钮（半圆和矩形）
+        const addButtons = nodeGroup.querySelectorAll('.left-semicircle, .right-semicircle, .left-rectangle, .right-rectangle');
+        const originalButtonStyles = [];
+        addButtons.forEach(button => {
+            originalButtonStyles.push(button.style.display);
+            button.style.display = 'none';
+        });
+        
         // 获取跑道形状元素
         const rectPath = nodeGroup.querySelector('path');
         
@@ -2935,6 +2943,11 @@ class MindMap {
             // 恢复原始文本显示
             originalForeignObjects.forEach(fo => {
                 fo.style.display = '';
+            });
+            
+            // 恢复添加子节点按钮的显示
+            addButtons.forEach((button, index) => {
+                button.style.display = originalButtonStyles[index];
             });
             
             // 移除编辑元素
