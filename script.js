@@ -1425,7 +1425,7 @@ class MindMap {
         if (node.style.shape === 'track') {
             // 跑道形状：设置半圆形路径（位于节点框内，左侧20px宽度，跟随半圆曲线）
             const radius = height / 2;
-            const leftPathData = `M${x} ${y + radius} A${radius} ${radius} 0 0 1 ${x + radius} ${y} L${x + 20} ${y} L${x + 20} ${y + height} L${x + radius} ${y + height} A${radius} ${radius} 0 0 1 ${x} ${y + radius} Z`;
+            const leftPathData = `M${x + radius} ${y} A${radius} ${radius} 0 0 0 ${x} ${y + radius} A${radius} ${radius} 0 0 0 ${x + radius} ${y + height} Z`;
             leftClickArea.setAttribute('d', leftPathData);
             leftClickArea.setAttribute('class', 'left-semicircle');
         } else if (node.style.shape === 'rounded-rect') {
@@ -1474,7 +1474,7 @@ class MindMap {
         if (node.style.shape === 'track') {
             // 跑道形状：设置半圆形路径（位于节点框内，右侧20px宽度，跟随半圆曲线）
             const radius = height / 2;
-            const rightPathData = `M${x + width - 20} ${y} L${x + width - radius} ${y} A${radius} ${radius} 0 0 1 ${x + width} ${y + radius} L${x + width} ${y + height - radius} A${radius} ${radius} 0 0 1 ${x + width - radius} ${y + height} L${x + width - 20} ${y + height} Z`;
+            const rightPathData = `M${x + width - radius} ${y} A${radius} ${radius} 0 0 1 ${x + width} ${y + radius} A${radius} ${radius} 0 0 1 ${x + width - radius} ${y + height} Z`;
             rightClickArea.setAttribute('d', rightPathData);
             rightClickArea.setAttribute('class', 'right-semicircle');
         } else if (node.style.shape === 'rounded-rect') {
