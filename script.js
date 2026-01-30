@@ -1672,45 +1672,26 @@ class MindMap {
         // 文本自动换行函数
         const wrapText = (text, maxWidth) => {
             const lines = [];
+            let currentLine = '';
             
-            // 检查是否包含空格
-            if (text.includes(' ')) {
-                // 基于单词的换行
-                const words = text.split(' ');
-                let currentLine = words[0];
+            // 基于字符的换行，将空格视为普通文本
+            for (let i = 0; i < text.length; i++) {
+                const char = text[i];
+                const testLine = currentLine + char;
+                const testWidth = ctx.measureText(testLine).width;
                 
-                for (let i = 1; i < words.length; i++) {
-                    const testLine = currentLine + ' ' + words[i];
-                    const testWidth = ctx.measureText(testLine).width;
-                    
-                    if (testWidth <= maxWidth) {
-                        currentLine = testLine;
-                    } else {
+                if (testWidth <= maxWidth) {
+                    currentLine = testLine;
+                } else {
+                    if (currentLine) {
                         lines.push(currentLine);
-                        currentLine = words[i];
                     }
+                    currentLine = char;
                 }
+            }
+            
+            if (currentLine) {
                 lines.push(currentLine);
-            } else {
-                // 基于字符的换行（处理无空格长文本）
-                let currentLine = '';
-                
-                for (let i = 0; i < text.length; i++) {
-                    const testLine = currentLine + text[i];
-                    const testWidth = ctx.measureText(testLine).width;
-                    
-                    if (testWidth <= maxWidth) {
-                        currentLine = testLine;
-                    } else {
-                        if (currentLine) {
-                            lines.push(currentLine);
-                        }
-                        currentLine = text[i];
-                    }
-                }
-                if (currentLine) {
-                    lines.push(currentLine);
-                }
             }
             
             return lines;
@@ -3009,45 +2990,26 @@ class MindMap {
         // 文本自动换行函数
         const wrapText = (text, maxWidth, ctx) => {
             const lines = [];
+            let currentLine = '';
             
-            // 检查是否包含空格
-            if (text.includes(' ')) {
-                // 基于单词的换行
-                const words = text.split(' ');
-                let currentLine = words[0];
+            // 基于字符的换行，将空格视为普通文本
+            for (let i = 0; i < text.length; i++) {
+                const char = text[i];
+                const testLine = currentLine + char;
+                const testWidth = ctx.measureText(testLine).width;
                 
-                for (let i = 1; i < words.length; i++) {
-                    const testLine = currentLine + ' ' + words[i];
-                    const testWidth = ctx.measureText(testLine).width;
-                    
-                    if (testWidth <= maxWidth) {
-                        currentLine = testLine;
-                    } else {
+                if (testWidth <= maxWidth) {
+                    currentLine = testLine;
+                } else {
+                    if (currentLine) {
                         lines.push(currentLine);
-                        currentLine = words[i];
                     }
+                    currentLine = char;
                 }
+            }
+            
+            if (currentLine) {
                 lines.push(currentLine);
-            } else {
-                // 基于字符的换行（处理无空格长文本）
-                let currentLine = '';
-                
-                for (let i = 0; i < text.length; i++) {
-                    const testLine = currentLine + text[i];
-                    const testWidth = ctx.measureText(testLine).width;
-                    
-                    if (testWidth <= maxWidth) {
-                        currentLine = testLine;
-                    } else {
-                        if (currentLine) {
-                            lines.push(currentLine);
-                        }
-                        currentLine = text[i];
-                    }
-                }
-                if (currentLine) {
-                    lines.push(currentLine);
-                }
             }
             
             return lines;
