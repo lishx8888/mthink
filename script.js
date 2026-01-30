@@ -1268,9 +1268,9 @@ class MindMap {
         return node.getNodeBounds();
     }
     
-    selectNode(node) {
-        if (this.isCtrlPressed) {
-            // 按住CTRL键时，进行多选操作
+    selectNode(node, e) {
+        if (e && (e.ctrlKey || e.metaKey || e.shiftKey)) {
+            // 按住CTRL键或SHIFT键时，进行多选操作
             if (this.selectedNodes.includes(node)) {
                 // 如果节点已经被选中，取消选择
                 this.selectedNodes = this.selectedNodes.filter(n => n.id !== node.id);
@@ -1278,12 +1278,12 @@ class MindMap {
                 this.selectedNode = this.selectedNodes.length > 0 ? this.selectedNodes[0] : null;
             } else {
                 // 如果节点未被选中，添加到选中列表
-                this.intersectingNodes.push(node);
+                this.selectedNodes.push(node);
                 // 更新selectedNode为当前点击的节点
                 this.selectedNode = node;
             }
         } else {
-            // 未按住CTRL键时，保持原有行为：单选
+            // 未按住CTRL键或SHIFT键时，保持原有行为：单选
             this.selectedNode = node;
             this.selectedNodes = node ? [node] : [];
         }
@@ -1559,7 +1559,7 @@ class MindMap {
                     // 检查点击目标是否是文本编辑区域
                     const isTextArea = e.target.closest('textarea') || e.target.closest('.edit-foreign-object');
                     if (!isTextArea) {
-                        this.selectNode(node);
+                        this.selectNode(node, e);
                     }
                 }
             });
