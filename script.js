@@ -1278,7 +1278,7 @@ class MindMap {
                 this.selectedNode = this.selectedNodes.length > 0 ? this.selectedNodes[0] : null;
             } else {
                 // 如果节点未被选中，添加到选中列表
-                this.selectedNodes.push(node);
+                this.intersectingNodes.push(node);
                 // 更新selectedNode为当前点击的节点
                 this.selectedNode = node;
             }
@@ -2099,7 +2099,7 @@ class MindMap {
         this.selectionRect.setAttribute('height', height);
         
         // 碰撞检测：检查节点是否与框选区域相交
-        const selectedNodes = [];
+        const intersectingNodes = [];
         
         this.nodes.forEach(node => {
             // 计算节点的世界坐标边界
@@ -2117,11 +2117,25 @@ class MindMap {
             // 宽松的碰撞检测：只要节点与框选区域有任何重叠就选中
             // 在世界坐标上进行比较，避免双重偏移问题
             if (nodeLeft < selectionWorldRight && nodeRight > selectionWorldLeft && nodeTop < selectionWorldBottom && nodeBottom > selectionWorldTop) {
-                selectedNodes.push(node);
+                intersectingNodes.push(node);
             }
         });
         
         // 更新选中状态
+        let selectedNodes = [];
+        if (e.shiftKey) {
+            // 按住SHIFT键时，在原有选中的基础上添加新的节点
+            const existingSelectedIds = new Set(this.selectedNodes.map(node => node.id));
+            intersectingNodes.forEach(node => {
+                if (!existingSelectedIds.has(node.id)) {
+                    existingSelectedIds.add(node.id);
+                }
+            });
+            selectedNodes = this.nodes.filter(node => existingSelectedIds.has(node.id));
+        } else {
+            // 未按住SHIFT键时，替换原有选中的节点
+            selectedNodes = intersectingNodes;
+        }
         this.selectedNodes = selectedNodes;
         this.selectedNode = selectedNodes.length > 0 ? selectedNodes[0] : null;
         
@@ -2129,7 +2143,7 @@ class MindMap {
         this.render();
     }
     
-    stopSelection() {
+    stopSelection(e) {
         // 如果处于编辑模式，不执行任何操作
         if (this.isEditingNode) {
             // 清理事件监听器以避免内存泄漏
@@ -2154,7 +2168,7 @@ class MindMap {
         const y2 = Math.max(this.selectionStartY, this.selectionEndY);
         
         // 碰撞检测：检查节点是否与框选区域相交
-        const selectedNodes = [];
+        const intersectingNodes = [];
         
         this.nodes.forEach(node => {
             // 计算节点的世界坐标边界
@@ -2172,11 +2186,25 @@ class MindMap {
             // 宽松的碰撞检测：只要节点与框选区域有任何重叠就选中
             // 在世界坐标上进行比较，避免双重偏移问题
             if (nodeLeft < selectionWorldRight && nodeRight > selectionWorldLeft && nodeTop < selectionWorldBottom && nodeBottom > selectionWorldTop) {
-                selectedNodes.push(node);
+                intersectingNodes.push(node);
             }
         });
         
         // 更新选中状态
+        let selectedNodes = [];
+        if (e.shiftKey) {
+            // 按住SHIFT键时，在原有选中的基础上添加新的节点
+            const existingSelectedIds = new Set(this.selectedNodes.map(node => node.id));
+            intersectingNodes.forEach(node => {
+                if (!existingSelectedIds.has(node.id)) {
+                    existingSelectedIds.add(node.id);
+                }
+            });
+            selectedNodes = this.nodes.filter(node => existingSelectedIds.has(node.id));
+        } else {
+            // 未按住SHIFT键时，替换原有选中的节点
+            selectedNodes = intersectingNodes;
+        }
         this.selectedNodes = selectedNodes;
         this.selectedNode = selectedNodes.length > 0 ? selectedNodes[0] : null;
         
