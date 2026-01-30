@@ -2911,7 +2911,7 @@ class MindMap {
         textarea.style.outline = 'none';
         textarea.style.padding = '0';
         textarea.style.resize = 'none';
-        textarea.style.overflow = 'auto';
+        textarea.style.overflow = 'hidden';
         textarea.style.whiteSpace = 'pre-wrap';
         textarea.style.wordWrap = 'break-word';
         textarea.style.lineHeight = '1.4';
@@ -2924,6 +2924,21 @@ class MindMap {
         textarea.style.webkitUserSelect = 'text';
         textarea.style.mozUserSelect = 'text';
         textarea.style.msUserSelect = 'text';
+        
+        // 添加自动调整高度的功能
+        function adjustTextareaHeight() {
+            textarea.style.height = 'auto';
+            textarea.style.height = textarea.scrollHeight + 'px'; // 不限制最大高度，根据内容自由调整
+        }
+        
+        // 初始调整高度
+        adjustTextareaHeight();
+        
+        // 监听内容变化，自动调整高度
+        textarea.addEventListener('input', adjustTextareaHeight);
+        
+        // 监听窗口大小变化，自动调整高度
+        window.addEventListener('resize', adjustTextareaHeight);
         
         // 添加到foreignObject
         textInput.appendChild(textarea);
