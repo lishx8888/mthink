@@ -1298,8 +1298,8 @@ class MindMap {
         node.text = newText;
         this.render();
         
-        // 触发实时布局
-        this.triggerRealTimeLayout();
+        // 触发实时布局，强制执行
+        this.triggerRealTimeLayout(true);
     }
     
     render() {
@@ -5727,24 +5727,59 @@ class MindMap {
         const finalX = thumbnailOriginX + (node.x - boundingBox.minX) * this.thumbnailScale;
         const finalY = thumbnailOriginY + (node.y - boundingBox.minY) * this.thumbnailScale;
         
-        // 创建节点的跑道形状
+        // 创建节点形状
         const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-        const radius = scaledHeight / 2;
         const x = finalX - scaledWidth / 2;
         const y = finalY - scaledHeight / 2;
         
-        const pathData = [
-            `M${x + radius} ${y}`,
-            `L${x + scaledWidth - radius} ${y}`,
-            `A${radius} ${radius} 0 0 1 ${x + scaledWidth} ${y + radius}`,
-            `L${x + scaledWidth} ${y + scaledHeight - radius}`,
-            `A${radius} ${radius} 0 0 1 ${x + scaledWidth - radius} ${y + scaledHeight}`,
-            `L${x + radius} ${y + scaledHeight}`,
-            `A${radius} ${radius} 0 0 1 ${x} ${y + scaledHeight - radius}`,
-            `L${x} ${y + radius}`,
-            `A${radius} ${radius} 0 0 1 ${x + radius} ${y}`,
-            'Z'
-        ].join(' ');
+        // 根据节点形状生成不同的路径数据
+        let pathData;
+        if (node.style.shape === 'track') {
+            // 跑道形状（圆角矩形 + 两端半圆）
+            const radius = scaledHeight / 2;
+            pathData = [
+                `M${x + radius} ${y}`,
+                `L${x + scaledWidth - radius} ${y}`,
+                `A${radius} ${radius} 0 0 1 ${x + scaledWidth} ${y + radius}`,
+                `L${x + scaledWidth} ${y + scaledHeight - radius}`,
+                `A${radius} ${radius} 0 0 1 ${x + scaledWidth - radius} ${y + scaledHeight}`,
+                `L${x + radius} ${y + scaledHeight}`,
+                `A${radius} ${radius} 0 0 1 ${x} ${y + scaledHeight - radius}`,
+                `L${x} ${y + radius}`,
+                `A${radius} ${radius} 0 0 1 ${x + radius} ${y}`,
+                'Z'
+            ].join(' ');
+        } else if (node.style.shape === 'rounded-rect') {
+            // 圆角矩形形状
+            const radius = Math.min(scaledHeight / 3, 15 * this.thumbnailScale); // 圆角半径
+            pathData = [
+                `M${x + radius} ${y}`,
+                `L${x + scaledWidth - radius} ${y}`,
+                `A${radius} ${radius} 0 0 1 ${x + scaledWidth} ${y + radius}`,
+                `L${x + scaledWidth} ${y + scaledHeight - radius}`,
+                `A${radius} ${radius} 0 0 1 ${x + scaledWidth - radius} ${y + scaledHeight}`,
+                `L${x + radius} ${y + scaledHeight}`,
+                `A${radius} ${radius} 0 0 1 ${x} ${y + scaledHeight - radius}`,
+                `L${x} ${y + radius}`,
+                `A${radius} ${radius} 0 0 1 ${x + radius} ${y}`,
+                'Z'
+            ].join(' ');
+        } else {
+            // 默认跑道形状
+            const radius = scaledHeight / 2;
+            pathData = [
+                `M${x + radius} ${y}`,
+                `L${x + scaledWidth - radius} ${y}`,
+                `A${radius} ${radius} 0 0 1 ${x + scaledWidth} ${y + radius}`,
+                `L${x + scaledWidth} ${y + scaledHeight - radius}`,
+                `A${radius} ${radius} 0 0 1 ${x + scaledWidth - radius} ${y + scaledHeight}`,
+                `L${x + radius} ${y + scaledHeight}`,
+                `A${radius} ${radius} 0 0 1 ${x} ${y + scaledHeight - radius}`,
+                `L${x} ${y + radius}`,
+                `A${radius} ${radius} 0 0 1 ${x + radius} ${y}`,
+                'Z'
+            ].join(' ');
+        }
         
         path.setAttribute('d', pathData);
         path.setAttribute('fill', node.style.nodeColor);
@@ -6501,9 +6536,9 @@ class MindMap {
     }
     
     // 触发实时布局
-    triggerRealTimeLayout() {
+    triggerRealTimeLayout(force = false) {
         // 方案一：适用于所有思维导图
-        if (this.isRealTimeLayoutEnabled && !this.isEditingNode) {
+        if (this.isRealTimeLayoutEnabled && (!this.isEditingNode || force)) {
             this.debouncedLayout();
         }
     }
