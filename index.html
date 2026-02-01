@@ -62,14 +62,28 @@
                             <input type="checkbox" id="realTimeLayoutToggle" checked>
                             <span class="slider"></span>
                         </label>
+                        <button id="centerNode" class="panel-button center-node-btn" title="中心节点">
+                            <svg width="16" height="16" viewBox="0 0 16 16">
+                                <circle cx="8" cy="8" r="5" fill="none" stroke="currentColor" stroke-width="1.5"/>
+                                <circle cx="8" cy="8" r="3" fill="none" stroke="currentColor" stroke-width="1.5"/>
+                                <line x1="8" y1="3" x2="8" y2="1" stroke="currentColor" stroke-width="1.5"/>
+                                <line x1="8" y1="13" x2="8" y2="15" stroke="currentColor" stroke-width="1.5"/>
+                                <line x1="3" y1="8" x2="1" y2="8" stroke="currentColor" stroke-width="1.5"/>
+                                <line x1="13" y1="8" x2="15" y2="8" stroke="currentColor" stroke-width="1.5"/>
+                                <line x1="4" y1="4" x2="2" y2="2" stroke="currentColor" stroke-width="1.5"/>
+                                <line x1="12" y1="12" x2="14" y2="14" stroke="currentColor" stroke-width="1.5"/>
+                                <line x1="4" y1="12" x2="2" y2="14" stroke="currentColor" stroke-width="1.5"/>
+                                <line x1="12" y1="4" x2="14" y2="2" stroke="currentColor" stroke-width="1.5"/>
+                            </svg>
+                        </button>
                     </div>
-                    <button id="centerNode" class="panel-button">中心节点</button>
                 </div>
-                <h3>样式设置</h3>
+
                 <!-- 颜色设置组 - 两行两列布局 -->
                 <div class="style-group">
-                    <label for="nodeColor">节点颜色:</label>
-                    <div class="color-palette" data-target="nodeColor">
+                    <div class="color-control">
+                        <label for="nodeColor">背景</label>
+                        <div class="color-palette" data-target="nodeColor">
                         <div class="color-swatches-container">
                             <span class="color-swatch" style="background-color: #ffffff"></span>
                             <span class="color-swatch" style="background-color: #f0f8ff"></span>
@@ -85,11 +99,13 @@
                             <span class="color-swatch" style="background-color: #add8e6"></span>
                         </div>
                         <input type="color" id="nodeColor" value="#ffffff" class="custom-color-picker">
+                        </div>
                     </div>
                 </div>
                 <div class="style-group">
-                    <label for="borderColor">边框颜色:</label>
-                    <div class="color-palette" data-target="borderColor">
+                    <div class="color-control">
+                        <label for="borderColor">边框</label>
+                        <div class="color-palette" data-target="borderColor">
                         <div class="color-swatches-container">
                             <span class="color-swatch" style="background-color: #000000"></span>
                             <span class="color-swatch" style="background-color: #ffffff"></span>
@@ -105,31 +121,14 @@
                             <span class="color-swatch" style="background-color: #32cd32"></span>
                         </div>
                         <input type="color" id="borderColor" value="#000000" class="custom-color-picker">
-                    </div>
-                </div>
-                <div class="style-group">
-                    <label for="fontColor">字体颜色:</label>
-                    <div class="color-palette" data-target="fontColor">
-                        <div class="color-swatches-container">
-                            <span class="color-swatch" style="background-color: #000000"></span>
-                            <span class="color-swatch" style="background-color: #333333"></span>
-                            <span class="color-swatch" style="background-color: #666666"></span>
-                            <span class="color-swatch" style="background-color: #999999"></span>
-                            <span class="color-swatch" style="background-color: #ff0000"></span>
-                            <span class="color-swatch" style="background-color: #0000ff"></span>
-                            <span class="color-swatch" style="background-color: #008000"></span>
-                            <span class="color-swatch" style="background-color: #800080"></span>
-                            <span class="color-swatch" style="background-color: #ff8c00"></span>
-                            <span class="color-swatch" style="background-color: #ff00ff"></span>
-                            <span class="color-swatch" style="background-color: #4b0082"></span>
-                            <span class="color-swatch" style="background-color: #8b4513"></span>
                         </div>
-                        <input type="color" id="fontColor" value="#000000" class="custom-color-picker">
                     </div>
                 </div>
+
                 <div class="style-group">
-                    <label for="connectionColor">连接线颜色:</label>
-                    <div class="color-palette" data-target="connectionColor">
+                    <div class="color-control">
+                        <label for="connectionColor">线条</label>
+                        <div class="color-palette" data-target="connectionColor">
                         <div class="color-swatches-container">
                             <span class="color-swatch" style="background-color: #000000"></span>
                             <span class="color-swatch" style="background-color: #808080"></span>
@@ -145,41 +144,95 @@
                             <span class="color-swatch" style="background-color: #32cd32"></span>
                         </div>
                         <input type="color" id="connectionColor" value="#000000" class="custom-color-picker">
+                        </div>
                     </div>
                 </div>
                 <!-- 节点形状选择器 -->
                 <div class="style-group">
-                    <label>节点形状:</label>
-                    <div class="shape-picker">
-                        <div class="shape-option" data-shape="track">
-                            <svg width="60" height="30" viewBox="0 0 60 30">
-                                <path d="M15 0 L45 0 A15 15 0 0 1 60 15 L60 15 A15 15 0 0 1 45 30 L15 30 A15 15 0 0 1 0 15 L0 15 A15 15 0 0 1 15 0 Z" fill="#ffffff" stroke="#000000" stroke-width="1"></path>
-                            </svg>
-                            <span>跑道形</span>
-                        </div>
-                        <div class="shape-option" data-shape="rounded-rect">
-                            <svg width="60" height="30" viewBox="0 0 60 30">
-                                <rect x="0" y="0" width="60" height="30" rx="8" ry="8" fill="#ffffff" stroke="#000000" stroke-width="1"></rect>
-                            </svg>
-                            <span>圆角矩形</span>
+                    <div class="shape-control">
+                        <label>形状</label>
+                        <div class="shape-picker">
+                            <div class="shape-option" data-shape="track" title="跑道形">
+                                <svg width="60" height="30" viewBox="0 0 60 30">
+                                    <path d="M15 0 L45 0 A15 15 0 0 1 60 15 L60 15 A15 15 0 0 1 45 30 L15 30 A15 15 0 0 1 0 15 L0 15 A15 15 0 0 1 15 0 Z" fill="#ffffff" stroke="#000000" stroke-width="1"></path>
+                                </svg>
+                            </div>
+                            <div class="shape-option" data-shape="rounded-rect" title="圆角矩形">
+                                <svg width="60" height="30" viewBox="0 0 60 30">
+                                    <rect x="0" y="0" width="60" height="30" rx="8" ry="8" fill="#ffffff" stroke="#000000" stroke-width="1"></rect>
+                                </svg>
+                            </div>
                         </div>
                     </div>
                 </div>
-                <!-- 字体设置组 - 跨两列布局 -->
+                <!-- 字体设置组 - 整合所有字体相关设置 -->
                 <div class="style-group" id="fontSettings">
-                    <div class="font-size-group">
-                        <label for="fontSize">字体大小:</label>
-                        <input type="number" id="fontSize" value="14" min="8" max="36">
-                    </div>
-                    <div class="font-family-group">
-                        <label for="fontFamily">字体:</label>
-                        <select id="fontFamily">
-                            <option value="Arial">Arial</option>
-                            <option value="微软雅黑">微软雅黑</option>
-                            <option value="宋体">宋体</option>
-                            <option value="黑体">黑体</option>
-                            <option value="Times New Roman">Times New Roman</option>
-                        </select>
+                    <div class="font-control">
+                        <label>字体</label>
+                        <div class="font-items">
+                            <div class="font-row">
+                                <div class="font-family-group">
+                                    <select id="fontFamily" title="字体">
+                                        <option value="Arial">Arial</option>
+                                        <option value="微软雅黑">微软雅黑</option>
+                                        <option value="宋体">宋体</option>
+                                        <option value="黑体">黑体</option>
+                                        <option value="Times New Roman">Times New Roman</option>
+                                    </select>
+                                </div>
+                                <div class="font-size-group">
+                                    <input type="number" id="fontSize" value="14" min="8" max="36" title="字号">
+                                </div>
+                            </div>
+                            <div class="text-align-group" title="文本对齐">
+                                <div class="text-align-options">
+                                    <button type="button" class="text-align-option" data-align="left" title="左对齐">
+                                        <svg width="20" height="20" viewBox="0 0 20 20">
+                                            <line x1="2" y1="4" x2="18" y2="4" stroke="currentColor" stroke-width="2"/>
+                                            <line x1="2" y1="8" x2="14" y2="8" stroke="currentColor" stroke-width="2"/>
+                                            <line x1="2" y1="12" x2="18" y2="12" stroke="currentColor" stroke-width="2"/>
+                                            <line x1="2" y1="16" x2="10" y2="16" stroke="currentColor" stroke-width="2"/>
+                                        </svg>
+                                    </button>
+                                    <button type="button" class="text-align-option" data-align="center" title="居中">
+                                        <svg width="20" height="20" viewBox="0 0 20 20">
+                                            <line x1="2" y1="4" x2="18" y2="4" stroke="currentColor" stroke-width="2"/>
+                                            <line x1="4" y1="8" x2="16" y2="8" stroke="currentColor" stroke-width="2"/>
+                                            <line x1="2" y1="12" x2="18" y2="12" stroke="currentColor" stroke-width="2"/>
+                                            <line x1="5" y1="16" x2="15" y2="16" stroke="currentColor" stroke-width="2"/>
+                                        </svg>
+                                    </button>
+                                    <button type="button" class="text-align-option" data-align="right" title="右对齐">
+                                        <svg width="20" height="20" viewBox="0 0 20 20">
+                                            <line x1="2" y1="4" x2="18" y2="4" stroke="currentColor" stroke-width="2"/>
+                                            <line x1="6" y1="8" x2="18" y2="8" stroke="currentColor" stroke-width="2"/>
+                                            <line x1="2" y1="12" x2="18" y2="12" stroke="currentColor" stroke-width="2"/>
+                                            <line x1="10" y1="16" x2="18" y2="16" stroke="currentColor" stroke-width="2"/>
+                                        </svg>
+                                    </button>
+                                    <input type="hidden" id="textAlign" value="left">
+                                </div>
+                            </div>
+                            <div class="font-color-group">
+                                <div class="color-palette" data-target="fontColor">
+                                    <div class="color-swatches-container">
+                                        <span class="color-swatch" style="background-color: #000000"></span>
+                                        <span class="color-swatch" style="background-color: #333333"></span>
+                                        <span class="color-swatch" style="background-color: #666666"></span>
+                                        <span class="color-swatch" style="background-color: #999999"></span>
+                                        <span class="color-swatch" style="background-color: #ff0000"></span>
+                                        <span class="color-swatch" style="background-color: #0000ff"></span>
+                                        <span class="color-swatch" style="background-color: #008000"></span>
+                                        <span class="color-swatch" style="background-color: #800080"></span>
+                                        <span class="color-swatch" style="background-color: #ff8c00"></span>
+                                        <span class="color-swatch" style="background-color: #ff00ff"></span>
+                                        <span class="color-swatch" style="background-color: #4b0082"></span>
+                                        <span class="color-swatch" style="background-color: #8b4513"></span>
+                                    </div>
+                                    <input type="color" id="fontColor" value="#000000" class="custom-color-picker">
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>

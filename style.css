@@ -140,13 +140,15 @@ body {
 
 /* 样式面板 */
 .style-panel {
-    width: 250px;
+    width: 320px;
+    max-width: 420px;
     background-color: #f0f0f0;
     padding: 15px;
     border-left: 1px solid #ddd;
     overflow-y: auto;
     /* 确保PC端保持垂直布局 */
     display: block;
+    flex-shrink: 0;
 }
 
 /* 画布控制按钮（仅在手机端显示） */
@@ -284,6 +286,127 @@ body {
     cursor: pointer;
 }
 
+/* 颜色控制容器样式 */
+.color-control {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+}
+
+/* 形状控制容器样式 */
+.shape-control {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+}
+
+/* 竖排标签样式 */
+.color-control label,
+.shape-control label {
+    writing-mode: vertical-rl;
+    text-orientation: mixed;
+    font-size: 12px;
+    font-weight: 500;
+    color: #555;
+    white-space: nowrap;
+    flex-shrink: 0;
+    width: 20px;
+    text-align: center;
+}
+
+/* 颜色调色板调整 */
+.color-control .color-palette {
+    flex: 1;
+    margin-top: 0;
+}
+
+/* 形状选择器调整 */
+.shape-control .shape-picker {
+    flex: 1;
+    display: flex;
+    gap: 12px;
+}
+
+/* 字体设置组样式 - PC端 */
+.style-group#fontSettings {
+    display: block;
+}
+
+/* 字体控制容器样式 */
+.style-group#fontSettings .font-control {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+}
+
+/* 竖排标签样式 */
+.color-control label,
+.shape-control label,
+.style-group#fontSettings .font-control label {
+    writing-mode: vertical-rl;
+    text-orientation: mixed;
+    font-size: 12px;
+    font-weight: 500;
+    color: #555;
+    white-space: nowrap;
+    flex-shrink: 0;
+    width: 20px;
+    text-align: center;
+}
+
+/* 字体项目容器样式 */
+.style-group#fontSettings .font-items {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+/* 字体和字号并排容器 */
+.style-group#fontSettings .font-row {
+    display: flex;
+    gap: 10px;
+}
+
+.style-group#fontSettings .font-row .font-family-group,
+.style-group#fontSettings .font-row .font-size-group {
+    flex: 1;
+}
+
+/* 字体颜色组样式 */
+.style-group#fontSettings .font-color-group {
+    display: block;
+}
+
+.style-group#fontSettings .font-color-group .color-palette {
+    margin-top: 0;
+}
+
+.style-group#fontSettings .font-family-group,
+.style-group#fontSettings .font-size-group,
+.style-group#fontSettings .text-align-group {
+    margin-bottom: 0;
+    margin-top: 0;
+    padding: 0;
+    display: block;
+}
+
+.style-group#fontSettings .font-family-group select,
+.style-group#fontSettings .font-size-group input {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+}
+
+.style-group#fontSettings .text-align-group .text-align-options {
+    width: 100%;
+}
+
 /* 响应式设计 */
 /* 针对iPhone SE等小屏设备的专门优化 */
 @media (max-width: 375px) {
@@ -296,6 +419,106 @@ body {
     .style-panel {
         height: auto;
         max-height: 35vh;
+    }
+}
+
+/* 针对低分辨率电脑的响应式设计 */
+@media (min-width: 769px) and (max-width: 1024px) {
+    .style-panel {
+        width: 200px; /* 减小样式面板宽度，适应低分辨率屏幕 */
+        padding: 10px; /* 减小内边距，节省空间 */
+        overflow-y: hidden; /* 防止出现滚动条 */
+    }
+    
+    /* 覆盖固定的高度和最小高度 */
+    .color-palette {
+        min-height: auto !important; /* 移除固定最小高度 */
+        height: auto !important; /* 允许自适应高度 */
+    }
+    
+    .custom-color-picker {
+        width: 24px !important; /* 减小自定义颜色选择器尺寸 */
+        height: 24px !important; /* 减小自定义颜色选择器尺寸 */
+        max-height: 24px !important; /* 减小自定义颜色选择器最大尺寸 */
+        max-width: 24px !important; /* 减小自定义颜色选择器最大尺寸 */
+        padding: 1px !important; /* 减小内边距 */
+    }
+    
+    .style-group input[type="number"],
+    .style-group select {
+        height: 20px !important; /* 减小输入框和下拉框高度 */
+        padding: 1px 2px !important; /* 减小内边距 */
+        font-size: 11px !important; /* 减小字体大小 */
+    }
+    
+    /* 覆盖形状选择器的固定尺寸 */
+    .shape-option svg {
+        width: 40px !important; /* 减小形状预览尺寸 */
+        height: 20px !important; /* 减小形状预览尺寸 */
+    }
+    
+    /* 覆盖文本对齐选项的固定尺寸 */
+    .text-align-option svg {
+        width: 16px !important; /* 减小文本对齐图标尺寸 */
+        height: 16px !important; /* 减小文本对齐图标尺寸 */
+    }
+    
+    .style-panel .style-group {
+        margin-bottom: 10px; /* 减小样式组之间的间距 */
+    }
+    
+    .style-panel .panel-controls {
+        gap: 8px; /* 减小按钮之间的间距 */
+    }
+    
+    .panel-button {
+        padding: 6px 12px; /* 减小按钮尺寸 */
+        font-size: 12px; /* 减小按钮字体大小 */
+    }
+    
+    .color-palette {
+        padding: 6px; /* 减小调色板内边距 */
+        gap: 6px; /* 减小颜色样例之间的间距 */
+        min-height: 38px; /* 减小调色板最小高度 */
+        align-items: center;
+    }
+    
+    .color-swatches-container {
+        gap: 3px; /* 减小颜色样例之间的间距 */
+    }
+    
+    .color-swatch {
+        width: 14px; /* 减小颜色样例尺寸 */
+        height: 14px; /* 减小颜色样例尺寸 */
+    }
+    
+    .shape-option {
+        min-width: 60px; /* 减小形状选项最小宽度 */
+        padding: 4px; /* 减小形状选项内边距 */
+    }
+    
+    .shape-option svg {
+        width: 40px; /* 减小形状预览尺寸 */
+        height: 20px; /* 减小形状预览尺寸 */
+    }
+    
+    .shape-option span {
+        font-size: 11px; /* 减小形状选项文字大小 */
+    }
+    
+    .text-align-options {
+        padding: 6px; /* 减小文本对齐选项内边距 */
+        gap: 5px; /* 减小文本对齐按钮之间的间距 */
+    }
+    
+    .text-align-option {
+        padding: 5px; /* 减小文本对齐按钮内边距 */
+        min-height: 30px; /* 减小文本对齐按钮最小高度 */
+    }
+    
+    .text-align-option svg {
+        width: 16px; /* 减小文本对齐图标尺寸 */
+        height: 16px; /* 减小文本对齐图标尺寸 */
     }
 }
 
@@ -380,21 +603,61 @@ body {
     /* 字体和字体大小 - 合并为一行 */
     .style-panel .style-group#fontSettings {
         grid-column: 1 / -1;
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 3px;
+        display: block;
         padding: 2px 3px;
-        align-items: center;
     }
     
+    .style-panel .style-group#fontSettings .font-control {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        width: 100%;
+    }
+    
+    .style-panel .style-group#fontSettings .font-items {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+    
+    .style-panel .style-group#fontSettings .font-row {
+        display: flex;
+        gap: 8px;
+    }
+    
+    .style-panel .style-group#fontSettings .font-row .font-family-group,
+    .style-panel .style-group#fontSettings .font-row .font-size-group {
+        flex: 1;
+    }
+    
+    .style-panel .style-group#fontSettings .font-color-group {
+        display: block;
+    }
+    
+    .style-panel .style-group#fontSettings .font-color-group .color-palette {
+        margin-top: 0;
+    }
+    
+    .style-panel .style-group#fontSettings .font-family-group,
     .style-panel .style-group#fontSettings .font-size-group,
-    .style-panel .style-group#fontSettings .font-family-group {
+    .style-panel .style-group#fontSettings .text-align-group {
         margin-bottom: 0;
         margin-top: 0;
         padding: 0;
-        display: flex;
-        flex-direction: column;
-        justify-content: flex-start;
+        display: block;
+    }
+    
+    .style-panel .style-group#fontSettings .font-family-group select,
+    .style-panel .style-group#fontSettings .font-size-group input {
+        width: 100%;
+        box-sizing: border-box;
+        padding: 6px;
+        border-width: 1px;
+    }
+    
+    .style-panel .style-group#fontSettings .text-align-group .text-align-options {
+        width: 100%;
     }
     
     .style-group label {
@@ -409,7 +672,7 @@ body {
     /* 颜色调色板 - 手机端优化 */
     .color-palette {
         flex-direction: row;
-        gap: 3px;
+        gap: 2px;
         padding: 1px 2px;
         min-height: auto;
         width: 100%;
@@ -419,7 +682,7 @@ body {
     }
     
     .color-swatches-container {
-        grid-template-columns: repeat(6, 1fr);
+        grid-template-columns: repeat(4, 1fr);
         gap: 2px;
         min-width: 0;
         width: 100%;
@@ -428,32 +691,74 @@ body {
     }
     
     .color-swatch {
-        width: 12px;
-        height: 12px;
+        width: 10px;
+        height: 10px;
     }
     
     /* 自定义颜色选择器 - 手机端优化 */
     .custom-color-picker {
-        width: 22px;
-        height: 22px;
+        width: 18px;
+        height: 18px;
+        padding: 1px;
+        border-width: 1px;
     }
     
     /* 字体大小输入框 - 手机端优化 */
     .style-group input[type="number"] {
-        padding: 2px 2px;
+        padding: 1px 2px;
         font-size: 11px;
         width: 100%;
         box-sizing: border-box;
-        height: 24px;
+        height: 22px;
+        border-width: 1px;
     }
     
     /* 字体选择下拉框 - 手机端优化 */
     .style-group select {
-        padding: 2px 2px;
+        padding: 1px 2px;
         font-size: 11px;
         width: 100%;
         box-sizing: border-box;
-        height: 24px;
+        height: 22px;
+        border-width: 1px;
+    }
+    
+    /* 形状选择器 - 手机端优化 */
+    .shape-picker {
+        gap: 4px;
+        padding: 2px;
+    }
+    
+    .shape-option {
+        min-width: 60px;
+        padding: 4px;
+        border-width: 1px;
+    }
+    
+    .shape-option svg {
+        width: 40px;
+        height: 20px;
+    }
+    
+    .shape-option span {
+        font-size: 10px;
+    }
+    
+    /* 文本对齐选项 - 手机端优化 */
+    .text-align-options {
+        padding: 4px;
+        gap: 4px;
+    }
+    
+    .text-align-option {
+        padding: 4px;
+        min-height: 28px;
+        border-width: 1px;
+    }
+    
+    .text-align-option svg {
+        width: 16px;
+        height: 16px;
     }
     
     /* 缩略图画布 - 手机端优化 */
@@ -865,6 +1170,46 @@ input:checked + .slider:before {
     white-space: nowrap;
 }
 
+/* 中心节点按钮样式 */
+.center-node-btn {
+    padding: 4px 8px;
+    min-width: auto;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: #fff;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.center-node-btn:hover {
+    background-color: #f5f5f5;
+    border-color: #bbb;
+}
+
+.center-node-btn:active {
+    background-color: #e8e8e8;
+    border-color: #aaa;
+}
+
+.center-node-btn svg {
+    width: 16px;
+    height: 16px;
+    color: #333;
+}
+
+.center-node-btn:hover svg {
+    color: #000;
+}
+
+.center-node-btn:active svg {
+    color: #555;
+}
+
 /* 节点形状选择器样式 */
 .shape-picker {
     display: flex;
@@ -883,6 +1228,12 @@ input:checked + .slider:before {
     cursor: pointer;
     transition: all 0.2s ease;
     min-width: 80px;
+    flex: 1;
+}
+
+.shape-option svg {
+    width: 60px;
+    height: 30px;
 }
 
 .shape-option:hover {
@@ -893,16 +1244,6 @@ input:checked + .slider:before {
 .shape-option.selected {
     border-color: #007bff;
     background-color: #e3f2fd;
-}
-
-.shape-option svg {
-    width: 60px;
-    height: 30px;
-}
-
-.shape-option span {
-    font-size: 12px;
-    text-align: center;
 }
 
 /* 移动设备响应式样式 */
@@ -920,8 +1261,66 @@ input:checked + .slider:before {
         width: 50px;
         height: 25px;
     }
+}
+
+/* 文本对齐选项样式 */
+.text-align-options {
+    display: flex;
+    gap: 8px;
+    margin-top: 5px;
+    padding: 10px;
+    background-color: white;
+    border-radius: 8px;
+    border: 1px solid #ddd;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.text-align-option {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 8px;
+    border: 2px solid #ddd;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    background-color: white;
+    min-height: 36px;
+}
+
+.text-align-option:hover {
+    border-color: #aaa;
+    background-color: #f5f5f5;
+}
+
+.text-align-option.selected {
+    border-color: #007bff;
+    background-color: #e3f2fd;
+}
+
+.text-align-option svg {
+    width: 20px;
+    height: 20px;
+}
+
+/* 移动设备响应式样式 */
+@media (max-width: 768px) {
+    .text-align-options {
+        padding: 8px;
+        gap: 6px;
+    }
     
-    .shape-option span {
-        font-size: 11px;
+    .text-align-option {
+        padding: 6px;
+        min-height: 32px;
+    }
+    
+    .text-align-option svg {
+        width: 18px;
+        height: 18px;
     }
 }
