@@ -13,6 +13,8 @@ class Node {
         this.style = {
             nodeColor: '#ffffff',
             borderColor: '#000000',
+            borderStyle: 'solid',
+            borderWidth: 1,
             fontColor: '#000000',
             fontSize: 14,
             fontFamily: 'Arial',
@@ -878,9 +880,8 @@ class MindMap {
                                 // 确保路径样式与节点当前样式完全一致
                                 nodePath.setAttribute('fill', node.style.nodeColor || '#ffffff');
                                 nodePath.setAttribute('stroke', node.style.borderColor || '#000000');
-                                nodePath.setAttribute('stroke-width', '2');
-                                // 确保路径没有被错误地应用了其他样式
-                                nodePath.removeAttribute('stroke-dasharray');
+                                nodePath.setAttribute('stroke-width', node.style.borderWidth || '1');
+                                nodePath.setAttribute('stroke-dasharray', node.style.borderStyle === 'solid' ? 'none' : (node.style.borderStyle === 'dashed' ? '5,5' : '2,2'));
                                 nodePath.removeAttribute('opacity');
                             }
                             
@@ -1405,7 +1406,8 @@ class MindMap {
             rectPath.setAttribute('d', pathData);
             rectPath.setAttribute('fill', node.style.nodeColor);
             rectPath.setAttribute('stroke', node.style.borderColor);
-            rectPath.setAttribute('stroke-width', '2');
+            rectPath.setAttribute('stroke-width', node.style.borderWidth || '1');
+            rectPath.setAttribute('stroke-dasharray', node.style.borderStyle === 'solid' ? 'none' : (node.style.borderStyle === 'dashed' ? '5,5' : '2,2'));
             
             // 为了保持事件监听一致性，将rectPath赋值给rect变量
             const rect = rectPath;
@@ -3286,6 +3288,8 @@ class MindMap {
             // 禁用样式面板
             document.getElementById('nodeColor').disabled = true;
             document.getElementById('borderColor').disabled = true;
+            document.getElementById('borderStyle').disabled = true;
+            document.getElementById('borderWidth').disabled = true;
             document.getElementById('fontColor').disabled = true;
             document.getElementById('fontSize').disabled = true;
             document.getElementById('fontFamily').disabled = true;
@@ -3295,6 +3299,8 @@ class MindMap {
         // 启用样式面板
         document.getElementById('nodeColor').disabled = false;
         document.getElementById('borderColor').disabled = false;
+        document.getElementById('borderStyle').disabled = false;
+        document.getElementById('borderWidth').disabled = false;
         document.getElementById('fontColor').disabled = false;
         document.getElementById('fontSize').disabled = false;
         document.getElementById('fontFamily').disabled = false;
@@ -3304,6 +3310,8 @@ class MindMap {
             const node = this.selectedNodes[0];
             document.getElementById('nodeColor').value = node.style.nodeColor;
             document.getElementById('borderColor').value = node.style.borderColor;
+            document.getElementById('borderStyle').value = node.style.borderStyle || 'solid';
+            document.getElementById('borderWidth').value = node.style.borderWidth || 1;
             document.getElementById('fontColor').value = node.style.fontColor;
             document.getElementById('fontSize').value = node.style.fontSize;
             document.getElementById('fontFamily').value = node.style.fontFamily;
@@ -3342,6 +3350,8 @@ class MindMap {
         const stylePanelValues = {
             nodeColor: document.getElementById('nodeColor').value,
             borderColor: document.getElementById('borderColor').value,
+            borderStyle: document.getElementById('borderStyle').value,
+            borderWidth: parseInt(document.getElementById('borderWidth').value),
             fontColor: document.getElementById('fontColor').value,
             fontSize: parseInt(document.getElementById('fontSize').value),
             fontFamily: document.getElementById('fontFamily').value,
@@ -3378,6 +3388,12 @@ class MindMap {
             }
             if (updatedProperties.includes('textAlign') && stylePanelValues.textAlign !== node.style.textAlign) {
                 updatedStyle.textAlign = stylePanelValues.textAlign;
+            }
+            if (updatedProperties.includes('borderStyle') && stylePanelValues.borderStyle !== node.style.borderStyle) {
+                updatedStyle.borderStyle = stylePanelValues.borderStyle;
+            }
+            if (updatedProperties.includes('borderWidth') && stylePanelValues.borderWidth !== node.style.borderWidth) {
+                updatedStyle.borderWidth = stylePanelValues.borderWidth;
             }
             if (updatedProperties.includes('shape') && shape !== undefined) {
                 updatedStyle.shape = shape;
@@ -3576,9 +3592,8 @@ class MindMap {
                                 // 确保路径样式与节点当前样式完全一致
                                 nodePath.setAttribute('fill', node.style.nodeColor || '#ffffff');
                                 nodePath.setAttribute('stroke', node.style.borderColor || '#000000');
-                                nodePath.setAttribute('stroke-width', '2');
-                                // 确保路径没有被错误地应用了其他样式
-                                nodePath.removeAttribute('stroke-dasharray');
+                                nodePath.setAttribute('stroke-width', node.style.borderWidth || '1');
+                                nodePath.setAttribute('stroke-dasharray', node.style.borderStyle === 'solid' ? 'none' : (node.style.borderStyle === 'dashed' ? '5,5' : '2,2'));
                                 nodePath.removeAttribute('opacity');
                             }
                             
@@ -4687,7 +4702,7 @@ class MindMap {
         this.initExportDialogListeners();
         
         // 样式面板事件 - 检查元素是否存在
-        var styleInputs = ['nodeColor', 'borderColor', 'fontColor', 'fontSize', 'fontFamily', 'textAlign', 'connectionColor'];
+        var styleInputs = ['nodeColor', 'borderColor', 'borderStyle', 'borderWidth', 'fontColor', 'fontSize', 'fontFamily', 'textAlign', 'connectionColor'];
         var self = this;
         styleInputs.forEach(function(id) {
             var element = document.getElementById(id);
@@ -4714,6 +4729,18 @@ class MindMap {
                     });
                 }
                 
+                // 为边框宽度添加鼠标滚轮事件监听
+                if (id === 'borderWidth') {
+                    element.addEventListener('wheel', function(e) {
+                        e.preventDefault(); // 阻止默认滚动行为
+                        var currentValue = parseInt(element.value);
+                        var delta = e.deltaY > 0 ? -1 : 1; // 向上滚动增大，向下滚动减小
+                        var newValue = Math.max(1, Math.min(10, currentValue + delta));
+                        element.value = newValue;
+                        self.updateNodeStyle(['borderWidth']);
+                    });
+                }
+                
                 // 为字体选择添加鼠标滚轮事件监听
                 if (id === 'fontFamily') {
                     element.addEventListener('wheel', function(e) {
@@ -4724,6 +4751,19 @@ class MindMap {
                         var newIndex = (currentIndex + delta + options.length) % options.length;
                         element.selectedIndex = newIndex;
                         self.updateNodeStyle(['fontFamily']);
+                    });
+                }
+                
+                // 为边框样式添加鼠标滚轮事件监听
+                if (id === 'borderStyle') {
+                    element.addEventListener('wheel', function(e) {
+                        e.preventDefault(); // 阻止默认滚动行为
+                        var options = element.options;
+                        var currentIndex = element.selectedIndex;
+                        var delta = e.deltaY > 0 ? 1 : -1; // 向上滚动选择上一个样式，向下滚动选择下一个样式
+                        var newIndex = (currentIndex + delta + options.length) % options.length;
+                        element.selectedIndex = newIndex;
+                        self.updateNodeStyle(['borderStyle']);
                     });
                 }
             }
@@ -5848,7 +5888,8 @@ class MindMap {
         path.setAttribute('d', pathData);
         path.setAttribute('fill', node.style.nodeColor);
         path.setAttribute('stroke', node.style.borderColor);
-        path.setAttribute('stroke-width', '1');
+        path.setAttribute('stroke-width', node.style.borderWidth || '1');
+        path.setAttribute('stroke-dasharray', node.style.borderStyle === 'solid' ? 'none' : (node.style.borderStyle === 'dashed' ? '5,5' : '2,2'));
         
         group.appendChild(path);
         

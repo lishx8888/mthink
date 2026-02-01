@@ -102,25 +102,41 @@
                         </div>
                     </div>
                 </div>
-                <div class="style-group">
-                    <div class="color-control">
-                        <label for="borderColor">边框</label>
-                        <div class="color-palette" data-target="borderColor">
-                        <div class="color-swatches-container">
-                            <span class="color-swatch" style="background-color: #000000"></span>
-                            <span class="color-swatch" style="background-color: #ffffff"></span>
-                            <span class="color-swatch" style="background-color: #808080"></span>
-                            <span class="color-swatch" style="background-color: #a9a9a9"></span>
-                            <span class="color-swatch" style="background-color: #ff0000"></span>
-                            <span class="color-swatch" style="background-color: #0000ff"></span>
-                            <span class="color-swatch" style="background-color: #008000"></span>
-                            <span class="color-swatch" style="background-color: #800080"></span>
-                            <span class="color-swatch" style="background-color: #ff8c00"></span>
-                            <span class="color-swatch" style="background-color: #ffd700"></span>
-                            <span class="color-swatch" style="background-color: #4169e1"></span>
-                            <span class="color-swatch" style="background-color: #32cd32"></span>
-                        </div>
-                        <input type="color" id="borderColor" value="#000000" class="custom-color-picker">
+                <div class="style-group" id="borderSettings">
+                    <div class="font-control">
+                        <label>边框</label>
+                        <div class="font-items">
+                            <div class="font-row">
+                                <div class="font-family-group">
+                                    <select id="borderStyle" title="边框样式">
+                                        <option value="solid">实线</option>
+                                        <option value="dashed">虚线</option>
+                                        <option value="dotted">点线</option>
+                                    </select>
+                                </div>
+                                <div class="font-size-group">
+                                    <input type="number" id="borderWidth" value="1" min="1" max="10" title="边框宽度">
+                                </div>
+                            </div>
+                            <div class="font-color-group">
+                                <div class="color-palette" data-target="borderColor">
+                                    <div class="color-swatches-container">
+                                        <span class="color-swatch" style="background-color: #000000"></span>
+                                        <span class="color-swatch" style="background-color: #ffffff"></span>
+                                        <span class="color-swatch" style="background-color: #808080"></span>
+                                        <span class="color-swatch" style="background-color: #a9a9a9"></span>
+                                        <span class="color-swatch" style="background-color: #ff0000"></span>
+                                        <span class="color-swatch" style="background-color: #0000ff"></span>
+                                        <span class="color-swatch" style="background-color: #008000"></span>
+                                        <span class="color-swatch" style="background-color: #800080"></span>
+                                        <span class="color-swatch" style="background-color: #ff8c00"></span>
+                                        <span class="color-swatch" style="background-color: #ffd700"></span>
+                                        <span class="color-swatch" style="background-color: #4169e1"></span>
+                                        <span class="color-swatch" style="background-color: #32cd32"></span>
+                                    </div>
+                                    <input type="color" id="borderColor" value="#000000" class="custom-color-picker">
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>

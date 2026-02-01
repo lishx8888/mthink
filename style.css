@@ -330,12 +330,14 @@ body {
 }
 
 /* 字体设置组样式 - PC端 */
-.style-group#fontSettings {
+.style-group#fontSettings,
+.style-group#borderSettings {
     display: block;
 }
 
 /* 字体控制容器样式 */
-.style-group#fontSettings .font-control {
+.style-group#fontSettings .font-control,
+.style-group#borderSettings .font-control {
     display: flex;
     align-items: center;
     gap: 12px;
@@ -345,7 +347,8 @@ body {
 /* 竖排标签样式 */
 .color-control label,
 .shape-control label,
-.style-group#fontSettings .font-control label {
+.style-group#fontSettings .font-control label,
+.style-group#borderSettings .font-control label {
     writing-mode: vertical-rl;
     text-orientation: mixed;
     font-size: 12px;
@@ -358,7 +361,8 @@ body {
 }
 
 /* 字体项目容器样式 */
-.style-group#fontSettings .font-items {
+.style-group#fontSettings .font-items,
+.style-group#borderSettings .font-items {
     flex: 1;
     display: flex;
     flex-direction: column;
@@ -366,28 +370,35 @@ body {
 }
 
 /* 字体和字号并排容器 */
-.style-group#fontSettings .font-row {
+.style-group#fontSettings .font-row,
+.style-group#borderSettings .font-row {
     display: flex;
     gap: 10px;
 }
 
 .style-group#fontSettings .font-row .font-family-group,
-.style-group#fontSettings .font-row .font-size-group {
+.style-group#fontSettings .font-row .font-size-group,
+.style-group#borderSettings .font-row .font-family-group,
+.style-group#borderSettings .font-row .font-size-group {
     flex: 1;
 }
 
 /* 字体颜色组样式 */
-.style-group#fontSettings .font-color-group {
+.style-group#fontSettings .font-color-group,
+.style-group#borderSettings .font-color-group {
     display: block;
 }
 
-.style-group#fontSettings .font-color-group .color-palette {
+.style-group#fontSettings .font-color-group .color-palette,
+.style-group#borderSettings .font-color-group .color-palette {
     margin-top: 0;
 }
 
 .style-group#fontSettings .font-family-group,
 .style-group#fontSettings .font-size-group,
-.style-group#fontSettings .text-align-group {
+.style-group#fontSettings .text-align-group,
+.style-group#borderSettings .font-family-group,
+.style-group#borderSettings .font-size-group {
     margin-bottom: 0;
     margin-top: 0;
     padding: 0;
@@ -395,7 +406,9 @@ body {
 }
 
 .style-group#fontSettings .font-family-group select,
-.style-group#fontSettings .font-size-group input {
+.style-group#fontSettings .font-size-group input,
+.style-group#borderSettings .font-family-group select,
+.style-group#borderSettings .font-size-group input {
     width: 100%;
     box-sizing: border-box;
     padding: 8px;
@@ -601,47 +614,57 @@ body {
     }
     
     /* 字体和字体大小 - 合并为一行 */
-    .style-panel .style-group#fontSettings {
+    .style-panel .style-group#fontSettings,
+    .style-panel .style-group#borderSettings {
         grid-column: 1 / -1;
         display: block;
         padding: 2px 3px;
     }
     
-    .style-panel .style-group#fontSettings .font-control {
+    .style-panel .style-group#fontSettings .font-control,
+    .style-panel .style-group#borderSettings .font-control {
         display: flex;
         align-items: center;
         gap: 8px;
         width: 100%;
     }
     
-    .style-panel .style-group#fontSettings .font-items {
+    .style-panel .style-group#fontSettings .font-items,
+    .style-panel .style-group#borderSettings .font-items {
         flex: 1;
         display: flex;
         flex-direction: column;
         gap: 8px;
     }
     
-    .style-panel .style-group#fontSettings .font-row {
+    .style-panel .style-group#fontSettings .font-row,
+    .style-panel .style-group#borderSettings .font-row {
         display: flex;
         gap: 8px;
     }
     
     .style-panel .style-group#fontSettings .font-row .font-family-group,
-    .style-panel .style-group#fontSettings .font-row .font-size-group {
+    .style-panel .style-group#fontSettings .font-row .font-size-group,
+    .style-panel .style-group#borderSettings .font-row .font-family-group,
+    .style-panel .style-group#borderSettings .font-row .font-size-group {
         flex: 1;
     }
     
-    .style-panel .style-group#fontSettings .font-color-group {
+    .style-panel .style-group#fontSettings .font-color-group,
+    .style-panel .style-group#borderSettings .font-color-group {
         display: block;
     }
     
-    .style-panel .style-group#fontSettings .font-color-group .color-palette {
+    .style-panel .style-group#fontSettings .font-color-group .color-palette,
+    .style-panel .style-group#borderSettings .font-color-group .color-palette {
         margin-top: 0;
     }
     
     .style-panel .style-group#fontSettings .font-family-group,
     .style-panel .style-group#fontSettings .font-size-group,
-    .style-panel .style-group#fontSettings .text-align-group {
+    .style-panel .style-group#fontSettings .text-align-group,
+    .style-panel .style-group#borderSettings .font-family-group,
+    .style-panel .style-group#borderSettings .font-size-group {
         margin-bottom: 0;
         margin-top: 0;
         padding: 0;
@@ -649,7 +672,9 @@ body {
     }
     
     .style-panel .style-group#fontSettings .font-family-group select,
-    .style-panel .style-group#fontSettings .font-size-group input {
+    .style-panel .style-group#fontSettings .font-size-group input,
+    .style-panel .style-group#borderSettings .font-family-group select,
+    .style-panel .style-group#borderSettings .font-size-group input {
         width: 100%;
         box-sizing: border-box;
         padding: 6px;
