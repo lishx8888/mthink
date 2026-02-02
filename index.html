@@ -7,6 +7,7 @@
     <link rel="stylesheet" href="style.css">
     <link rel="icon" href="images/icon.ico" type="image/x-icon">
     <link rel="shortcut icon" href="images/icon.ico" type="image/x-icon">
+    <link rel="stylesheet" href="css/font-awesome.min.css">
 </head>
 <body>
     <div class="container">
@@ -51,33 +52,38 @@
             
             <!-- 样式面板 -->
             <div class="style-panel">
-                <div class="panel-controls">
-                    <button id="saveMap" class="panel-button">保存</button>
-                    <button id="loadMap" class="panel-button">加载</button>
-                    <button id="exportMap" class="panel-button">导出</button>
-                    <button id="autoLayout" class="panel-button">手动布局</button>
-                    <div class="panel-control-group real-time-layout-container">
-                        <label for="realTimeLayoutToggle">实时布局:</label>
-                        <label class="switch">
-                            <input type="checkbox" id="realTimeLayoutToggle" checked>
-                            <span class="slider"></span>
-                        </label>
-                        <button id="centerNode" class="panel-button center-node-btn" title="中心节点">
-                            <svg width="16" height="16" viewBox="0 0 16 16">
-                                <circle cx="8" cy="8" r="5" fill="none" stroke="currentColor" stroke-width="1.5"/>
-                                <circle cx="8" cy="8" r="3" fill="none" stroke="currentColor" stroke-width="1.5"/>
-                                <line x1="8" y1="3" x2="8" y2="1" stroke="currentColor" stroke-width="1.5"/>
-                                <line x1="8" y1="13" x2="8" y2="15" stroke="currentColor" stroke-width="1.5"/>
-                                <line x1="3" y1="8" x2="1" y2="8" stroke="currentColor" stroke-width="1.5"/>
-                                <line x1="13" y1="8" x2="15" y2="8" stroke="currentColor" stroke-width="1.5"/>
-                                <line x1="4" y1="4" x2="2" y2="2" stroke="currentColor" stroke-width="1.5"/>
-                                <line x1="12" y1="12" x2="14" y2="14" stroke="currentColor" stroke-width="1.5"/>
-                                <line x1="4" y1="12" x2="2" y2="14" stroke="currentColor" stroke-width="1.5"/>
-                                <line x1="12" y1="4" x2="14" y2="2" stroke="currentColor" stroke-width="1.5"/>
-                            </svg>
-                        </button>
+                <div class="style-group">
+                    <div class="file-control">
+                        <label>文件</label>
+                        <div class="panel-controls">
+                            <button id="saveMap" class="panel-button icon-btn" title="保存">
+                                <i class="fa fa-save"></i>
+                            </button>
+                            <button id="loadMap" class="panel-button icon-btn" title="加载">
+                                <i class="fa fa-folder-open-o"></i>
+                            </button>
+                            <button id="exportMap" class="panel-button icon-btn" title="导出">
+                                <i class="fa fa-sign-out"></i>
+                            </button>
+                        </div>
                     </div>
                 </div>
+                <div class="divider"></div>
+                <div class="style-group">
+                    <div class="node-control">
+                        <label>节点</label>
+                        <div class="panel-controls">
+                            <div class="panel-control-group real-time-layout-container">
+                                <button id="centerNode" class="panel-button center-node-btn" title="中心节点">
+                                    <i class="fa fa-arrows"></i>
+                                </button>
+                                <button id="autoLayout" class="panel-button" style="flex: 1;">手动布局</button>
+                                <label title="实时布局" style="width: 50px; height: 36px; position: relative; display: inline-flex; align-items: center; justify-content: center; cursor: pointer;"><input type="checkbox" id="realTimeLayoutToggle" checked style="opacity: 0; width: 0; height: 0;"><span id="track" style="position: absolute; top: 50%; left: 0; right: 0; height: 28px; background-color: #444; border-radius: 14px; transition: .4s; transform: translateY(-50%);"></span><span id="knob" style="position: absolute; content: ''; top: 50%; left: 2px; width: 24px; height: 24px; background-color: white; border-radius: 50%; transition: .4s; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2); transform: translate(24px, -50%);"></span><script>document.getElementById('realTimeLayoutToggle').addEventListener('change', function() {var track = document.getElementById('track'); var knob = document.getElementById('knob'); if (this.checked) {track.style.backgroundColor = '#444'; knob.style.transform = 'translate(24px, -50%)';} else {track.style.backgroundColor = '#e0e0e0'; knob.style.transform = 'translate(0, -50%)';}});</script></label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="divider"></div>
 
                 <!-- 颜色设置组 - 两行两列布局 -->
                 <div class="style-group">
@@ -102,6 +108,7 @@
                         </div>
                     </div>
                 </div>
+                <div class="divider"></div>
                 <div class="style-group" id="borderSettings">
                     <div class="font-control">
                         <label>边框</label>
@@ -140,6 +147,7 @@
                         </div>
                     </div>
                 </div>
+                <div class="divider"></div>
 
                 <div class="style-group">
                     <div class="color-control">
@@ -163,6 +171,7 @@
                         </div>
                     </div>
                 </div>
+                <div class="divider"></div>
                 <!-- 节点形状选择器 -->
                 <div class="style-group">
                     <div class="shape-control">
@@ -181,10 +190,11 @@
                         </div>
                     </div>
                 </div>
+                <div class="divider"></div>
                 <!-- 字体设置组 - 整合所有字体相关设置 -->
                 <div class="style-group" id="fontSettings">
                     <div class="font-control">
-                        <label>字体</label>
+                        <label>文字</label>
                         <div class="font-items">
                             <div class="font-row">
                                 <div class="font-family-group">
