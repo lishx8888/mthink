@@ -128,9 +128,7 @@ body {
     pointer-events: none;
 }
 
-.node.selected path:not(.left-semicircle):not(.right-semicircle):not(.left-rectangle):not(.right-rectangle) {
-    /* 移除选中边框效果，使用底部横线替代 */
-}
+
 
 .node:hover path:not(.left-semicircle):not(.right-semicircle):not(.left-rectangle):not(.right-rectangle) {
     fill: #f0f0f0;
