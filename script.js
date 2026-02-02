@@ -2877,9 +2877,9 @@ class MindMap {
         
         // 创建文本输入foreignObject
         const textInput = document.createElementNS('http://www.w3.org/2000/svg', 'foreignObject');
-        textInput.setAttribute('x', node.x - node.width / 2 + 10);
+        textInput.setAttribute('x', node.x - node.width / 2); // 与节点左侧边缘对齐，覆盖文字与左边框之间的空间
         textInput.setAttribute('y', node.y - node.height / 2 + 10);
-        textInput.setAttribute('width', node.width - 20);
+        textInput.setAttribute('width', node.width - 10); // 调整宽度，确保可用输入空间与显示模式一致
         textInput.setAttribute('height', node.height - 20);
         textInput.setAttribute('class', 'edit-foreign-object');
         
@@ -2900,7 +2900,7 @@ class MindMap {
         editableDiv.style.color = node.style.fontColor;
         editableDiv.style.textAlign = node.style.textAlign || 'left';
         editableDiv.style.outline = 'none';
-        editableDiv.style.padding = '0';
+        editableDiv.style.padding = '0 0 0 10px'; // 左侧添加10px内边距，确保文本位置与显示模式一致
         editableDiv.style.resize = 'none';
         editableDiv.style.overflow = 'hidden';
         editableDiv.style.whiteSpace = 'pre-wrap';
@@ -3102,10 +3102,10 @@ class MindMap {
             }
             
             // 更新foreignObject大小
-            const textWidth = newWidth - padding * 2; // 与初始设置完全一致的宽度
+            const textWidth = newWidth - 10; // 调整宽度，确保可用输入空间与显示模式一致
             const textHeight = newHeight - padding * 2; // 与初始设置完全一致的高度
             
-            textInput.setAttribute('x', node.x - newWidth / 2 + padding); // 与初始设置完全一致的左边距
+            textInput.setAttribute('x', node.x - newWidth / 2); // 与节点左侧边缘对齐，覆盖文字与左边框之间的空间
             textInput.setAttribute('y', node.y - newHeight / 2 + padding); // 与初始设置完全一致的上边距
             textInput.setAttribute('width', textWidth);
             textInput.setAttribute('height', textHeight);
