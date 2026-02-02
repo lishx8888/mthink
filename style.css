@@ -448,9 +448,27 @@ body {
     display: block;
 }
 
+/* 样式组通用样式 */
+.style-group {
+    padding: 8px 0;
+    margin: 0;
+}
+
+/* 第一个样式组移除顶部padding */
+.style-group:first-child {
+    padding-top: 0;
+}
+
+/* 最后一个样式组移除底部padding */
+.style-group:last-child {
+    padding-bottom: 0;
+}
+
+/* 调整颜色调色板的边距 */
+.color-control .color-palette,
 .style-group#fontSettings .font-color-group .color-palette,
 .style-group#borderSettings .font-color-group .color-palette {
-    margin-top: 0;
+    margin: 0;
 }
 
 .style-group#fontSettings .font-family-group,
@@ -859,7 +877,7 @@ body {
     width: 100%;
     height: 1px;
     background: linear-gradient(to right, transparent, #999, transparent);
-    margin: 8px 0;
+    margin: 0;
     border: none;
     opacity: 0.8;
     display: block;
