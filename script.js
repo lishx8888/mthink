@@ -1952,6 +1952,11 @@ class MindMap {
             return;
         }
         
+        // 安全检查：如果实时布局已启用，不执行拖拽
+        if (this.isRealTimeLayoutEnabled) {
+            return;
+        }
+        
         this.isDragging = true;
         this.dragNode = node;
         this.dragStartX = e.clientX;
@@ -1969,6 +1974,16 @@ class MindMap {
     
     // 处理移动设备的触摸开始事件
     startTouchDrag(e, node) {
+        // 安全检查：如果正在编辑节点，绝对不执行拖拽
+        if (this.isEditingNode) {
+            return;
+        }
+        
+        // 安全检查：如果实时布局已启用，不执行拖拽
+        if (this.isRealTimeLayoutEnabled) {
+            return;
+        }
+        
         this.isDragging = true;
         this.dragNode = node;
         this.dragStartX = e.touches[0].clientX;
