@@ -112,7 +112,7 @@ class MindMap {
         this.currentEditingNode = null;
         
         // 连接线和箭头的统一颜色
-        this.connectionColor = '#000000'; // 默认黑色
+        this.connectionColor = '#b3b875ff'; // 默认颜色 R:183 G:106 B:85
         
         // 缩略图相关属性
         this.thumbnailCanvas = document.getElementById('thumbnailCanvas');
@@ -890,7 +890,7 @@ class MindMap {
                                 } else {
                                     nodePath.setAttribute('stroke', node.style.borderColor || '#000000');
                                     nodePath.setAttribute('stroke-width', node.style.borderWidth || '1');
-                                    nodePath.setAttribute('stroke-dasharray', node.style.borderStyle === 'solid' ? 'none' : (node.style.borderStyle === 'dashed' ? '5,5' : '2,2'));
+                                    nodePath.setAttribute('stroke-dasharray', node.style.borderStyle === 'none' ? 'none' : (node.style.borderStyle === 'solid' ? 'none' : (node.style.borderStyle === 'dashed' ? '5,5' : '2,2')));
                                 }
                                 nodePath.removeAttribute('opacity');
                             }
@@ -1422,7 +1422,7 @@ class MindMap {
             } else {
                 rectPath.setAttribute('stroke', node.style.borderColor);
                 rectPath.setAttribute('stroke-width', node.style.borderWidth || '1');
-                rectPath.setAttribute('stroke-dasharray', node.style.borderStyle === 'solid' ? 'none' : (node.style.borderStyle === 'dashed' ? '5,5' : '2,2'));
+                rectPath.setAttribute('stroke-dasharray', node.style.borderStyle === 'none' ? 'none' : (node.style.borderStyle === 'solid' ? 'none' : (node.style.borderStyle === 'dashed' ? '5,5' : '2,2')));
             }
             
             // 为了保持事件监听一致性，将rectPath赋值给rect变量
@@ -3626,9 +3626,13 @@ class MindMap {
                             if (nodePath) {
                                 // 确保路径样式与节点当前样式完全一致
                                 nodePath.setAttribute('fill', node.style.nodeColor || '#ffffff');
-                                nodePath.setAttribute('stroke', node.style.borderColor || '#000000');
-                                nodePath.setAttribute('stroke-width', node.style.borderWidth || '1');
-                                nodePath.setAttribute('stroke-dasharray', node.style.borderStyle === 'solid' ? 'none' : (node.style.borderStyle === 'dashed' ? '5,5' : '2,2'));
+                                if (node.style.borderStyle === 'none') {
+                                    nodePath.setAttribute('stroke', 'none');
+                                } else {
+                                    nodePath.setAttribute('stroke', node.style.borderColor || '#000000');
+                                    nodePath.setAttribute('stroke-width', node.style.borderWidth || '1');
+                                    nodePath.setAttribute('stroke-dasharray', node.style.borderStyle === 'solid' ? 'none' : (node.style.borderStyle === 'dashed' ? '5,5' : '2,2'));
+                                }
                                 nodePath.removeAttribute('opacity');
                             }
                             
@@ -3744,10 +3748,9 @@ class MindMap {
                     // 添加样式元素
                     const styleElement = document.createElementNS('http://www.w3.org/2000/svg', 'style');
                     styleElement.textContent = `
-                        .node path { stroke-width: 2px; }
                         .node text { pointer-events: none; }
-                        .connection { fill: none; stroke-width: 2px; }
-                        .arrow { stroke-width: 1px; }
+                        .connection { fill: none; }
+                        .arrow { }
                     `;
                     tempCanvas.insertBefore(styleElement, tempCanvas.firstChild);
                     
@@ -3834,10 +3837,13 @@ class MindMap {
                             if (nodePath) {
                                 // 确保路径样式与节点当前样式完全一致
                                 nodePath.setAttribute('fill', node.style.nodeColor || '#ffffff');
-                                nodePath.setAttribute('stroke', node.style.borderColor || '#000000');
-                                nodePath.setAttribute('stroke-width', '2');
-                                // 确保路径没有被错误地应用了其他样式
-                                nodePath.removeAttribute('stroke-dasharray');
+                                if (node.style.borderStyle === 'none') {
+                                    nodePath.setAttribute('stroke', 'none');
+                                } else {
+                                    nodePath.setAttribute('stroke', node.style.borderColor || '#000000');
+                                    nodePath.setAttribute('stroke-width', node.style.borderWidth || '1');
+                                    nodePath.setAttribute('stroke-dasharray', node.style.borderStyle === 'solid' ? 'none' : (node.style.borderStyle === 'dashed' ? '5,5' : '2,2'));
+                                }
                                 nodePath.removeAttribute('opacity');
                             }
                             
@@ -3942,10 +3948,9 @@ class MindMap {
                     // 添加样式元素
                     const pngStyleElement = document.createElementNS('http://www.w3.org/2000/svg', 'style');
                     pngStyleElement.textContent = `
-                        .node path { stroke-width: 2px; }
                         .node text { pointer-events: none; }
-                        .connection { fill: none; stroke-width: 2px; }
-                        .arrow { stroke-width: 1px; }
+                        .connection { fill: none; }
+                        .arrow { }
                     `;
                     tempPngCanvas.insertBefore(pngStyleElement, tempPngCanvas.firstChild);
                     
