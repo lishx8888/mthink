@@ -7791,17 +7791,16 @@ document.addEventListener('DOMContentLoaded', () => {
     const savedTheme = localStorage.getItem('theme');
     if (savedTheme === 'dark') {
         document.body.classList.add('dark-mode');
-        themeToggle.checked = true;
     }
     
     // 主题切换事件监听器
-    themeToggle.addEventListener('change', function() {
-        if (this.checked) {
-            document.body.classList.add('dark-mode');
-            localStorage.setItem('theme', 'dark');
-        } else {
+    themeToggle.addEventListener('click', function() {
+        if (document.body.classList.contains('dark-mode')) {
             document.body.classList.remove('dark-mode');
             localStorage.setItem('theme', 'light');
+        } else {
+            document.body.classList.add('dark-mode');
+            localStorage.setItem('theme', 'dark');
         }
         // 主题切换时更新缩略图画布，确保导航窗颜色立即更新
         mindMap.renderThumbnail();

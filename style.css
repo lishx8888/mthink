@@ -1134,81 +1134,53 @@ body {
     z-index: 100;
 }
 
-.theme-toggle {
+.theme-toggle-button {
     position: relative;
-    display: inline-block;
-    width: 50px;
-    height: 28px;
-    cursor: pointer;
-}
-
-.theme-toggle input {
-    opacity: 0;
-    width: 0;
-    height: 0;
-}
-
-.theme-track {
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background-color: var(--button-bg);
-    border-radius: 14px;
-    transition: .4s;
-}
-
-.theme-knob {
-    position: absolute;
-    top: 2px;
-    left: 2px;
-    width: 24px;
-    height: 24px;
-    border-radius: 50%;
-    background-color: white;
-    transition: .4s;
-    display: flex;
+    display: inline-flex;
     align-items: center;
     justify-content: center;
-    font-size: 12px;
+    width: 36px;
+    height: 36px;
+    background-color: var(--panel-bg);
+    border: 1px solid var(--ui-border-color);
+    border-radius: 50%;
+    cursor: pointer;
+    transition: all .4s ease;
+    padding: 8px;
+    color: var(--ui-text-primary);
 }
 
-.theme-toggle input:checked + .theme-track + .theme-knob {
-    transform: translateX(22px);
+.theme-toggle-button:hover {
+    background-color: var(--button-hover);
+    transform: scale(1.05);
 }
 
-.theme-toggle i {
+.theme-toggle-button .theme-icon {
     position: absolute;
     top: 50%;
-    transform: translateY(-50%);
-    font-size: 12px;
-    color: white;
-    transition: opacity .4s;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    transition: opacity .4s ease;
+    width: 16px;
+    height: 16px;
 }
 
-.theme-toggle i.fa-sun-o {
-    left: 7px;
-}
-
-.theme-toggle i.fa-moon-o {
-    right: 7px;
-}
-
-.theme-toggle input:checked ~ i.fa-sun-o {
-    opacity: 1;
-}
-
-.theme-toggle input ~ i.fa-sun-o {
+/* 白天模式（默认）显示月亮图标 */
+.theme-toggle-button .sun-icon {
     opacity: 0;
 }
 
-.theme-toggle input:checked ~ i.fa-moon-o {
-    opacity: 0;
+.theme-toggle-button .moon-icon {
+    opacity: 1;
 }
 
-.theme-toggle input ~ i.fa-moon-o {
+/* 夜间模式显示太阳图标 */
+body.dark-mode .theme-toggle-button .sun-icon {
     opacity: 1;
+}
+
+body.dark-mode .theme-toggle-button .moon-icon {
+    opacity: 0;
 }
 
 .custom-color-picker-panel.active {
@@ -1613,18 +1585,20 @@ body {
     bottom: 0;
     right: 0;
     width: 90px;
-    height: 90px;
+    height: 140px;
     z-index: 1000;
     display: flex;
+    flex-direction: column;
     align-items: flex-end;
     justify-content: flex-end;
+    gap: 10px;
+    padding: 20px;
 }
 
 /* 右侧栏显隐控制按钮样式 */
 .toggle-style-panel-btn {
     width: 50px;
     height: 50px;
-    margin: 20px;
     border-radius: 50%;
     background-color: var(--button-bg);
     color: white;
@@ -1638,6 +1612,33 @@ body {
     font-size: 20px;
     opacity: 0;
     visibility: visible;
+}
+
+/* 主题切换按钮图标样式 */
+.theme-toggle-btn .theme-icon {
+    width: 20px;
+    height: 20px;
+    transition: opacity .4s ease;
+}
+
+/* 白天模式（默认）显示月亮图标 */
+.theme-toggle-btn .sun-icon {
+    opacity: 0;
+    position: absolute;
+}
+
+.theme-toggle-btn .moon-icon {
+    opacity: 1;
+    position: absolute;
+}
+
+/* 夜间模式显示太阳图标 */
+body.dark-mode .theme-toggle-btn .sun-icon {
+    opacity: 1;
+}
+
+body.dark-mode .theme-toggle-btn .moon-icon {
+    opacity: 0;
 }
 
 .toggle-style-panel-container:hover .toggle-style-panel-btn {
