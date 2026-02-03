@@ -5946,17 +5946,21 @@ class MindMap {
         
         path.setAttribute('d', pathData);
         path.setAttribute('fill', node.style.nodeColor);
-        path.setAttribute('stroke', node.style.borderColor);
-        const scaledBorderWidth = (parseFloat(node.style.borderWidth || '1')) * this.thumbnailScale;
-        path.setAttribute('stroke-width', Math.max(scaledBorderWidth, 0.5)); // 确保最小宽度为0.5，避免太细看不见
-        if (node.style.borderStyle === 'solid') {
-            path.setAttribute('stroke-dasharray', 'none');
-        } else if (node.style.borderStyle === 'dashed') {
-            const scaledDash = 5 * this.thumbnailScale;
-            path.setAttribute('stroke-dasharray', `${Math.max(scaledDash, 1)},${Math.max(scaledDash, 1)}`);
-        } else if (node.style.borderStyle === 'dotted') {
-            const scaledDash = 2 * this.thumbnailScale;
-            path.setAttribute('stroke-dasharray', `${Math.max(scaledDash, 0.5)},${Math.max(scaledDash, 0.5)}`);
+        if (node.style.borderStyle === 'none') {
+            path.setAttribute('stroke', 'none');
+        } else {
+            path.setAttribute('stroke', node.style.borderColor);
+            const scaledBorderWidth = (parseFloat(node.style.borderWidth || '1')) * this.thumbnailScale;
+            path.setAttribute('stroke-width', Math.max(scaledBorderWidth, 0.5));
+            if (node.style.borderStyle === 'solid') {
+                path.setAttribute('stroke-dasharray', 'none');
+            } else if (node.style.borderStyle === 'dashed') {
+                const scaledDash = 5 * this.thumbnailScale;
+                path.setAttribute('stroke-dasharray', `${Math.max(scaledDash, 1)},${Math.max(scaledDash, 1)}`);
+            } else if (node.style.borderStyle === 'dotted') {
+                const scaledDash = 2 * this.thumbnailScale;
+                path.setAttribute('stroke-dasharray', `${Math.max(scaledDash, 0.5)},${Math.max(scaledDash, 0.5)}`);
+            }
         }
         
         group.appendChild(path);
