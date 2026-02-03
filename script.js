@@ -5385,6 +5385,66 @@ class MindMap {
             }
         });
         
+        // 画布鼠标滚轮事件（调节选中节点的字体大小）
+        this.canvas.addEventListener('wheel', (e) => {
+            // 如果处于编辑模式，不执行任何操作
+            if (this.isEditingNode) {
+                return;
+            }
+            
+            // 检查是否有选中的节点
+            if (this.selectedNode || this.selectedNodes.length > 0) {
+                e.preventDefault(); // 阻止默认滚动行为
+                
+                // 保存状态到历史记录
+                this.saveState();
+                
+                // 确定要调整的节点
+                const nodesToUpdate = this.selectedNodes.length > 0 ? this.selectedNodes : [this.selectedNode];
+                
+                // 计算字体大小变化值
+                const delta = e.deltaY > 0 ? -1 : 1; // 向上滚动增大，向下滚动减小
+                
+                // 保存每个选中节点的左侧端点位置
+                const leftPositions = new Map();
+                nodesToUpdate.forEach(node => {
+                    const leftPosition = node.x - node.width / 2;
+                    leftPositions.set(node.id, leftPosition);
+                });
+                
+                // 遍历所有选中的节点，调整字体大小
+                nodesToUpdate.forEach(node => {
+                    const currentFontSize = parseInt(node.style.fontSize || 14);
+                    const newFontSize = Math.max(8, Math.min(36, currentFontSize + delta));
+                    node.style.fontSize = newFontSize.toString();
+                });
+                
+                // 重新计算节点尺寸
+                this.calculateNodeSizes();
+                
+                // 调整节点位置，使左侧端点保持不变
+                nodesToUpdate.forEach(node => {
+                    // 获取保存的左侧端点位置
+                    const leftPosition = leftPositions.get(node.id);
+                    
+                    // 计算节点中心点的新位置，使左侧端点保持不变
+                    const newWidth = node.width;
+                    const newX = leftPosition + newWidth / 2;
+                    
+                    // 更新节点位置
+                    node.x = newX;
+                });
+                
+                // 更新样式面板
+                this.updateStylePanel();
+                // 重新渲染画布
+                this.render();
+                
+                // 触发实时布局
+                this.triggerRealTimeLayout();
+            }
+        });
+        
         // 双击画布创建节点（当没有节点存在时）
         this.canvas.addEventListener('dblclick', (e) => {
             if (this.nodes.length === 0) {
