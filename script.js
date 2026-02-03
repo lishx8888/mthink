@@ -3028,6 +3028,11 @@ class MindMap {
                 // 保存当前输入的文本
                 const newText = editableDiv.textContent.trim();
                 this.updateNodeText(node, newText);
+            } else if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                
+                // 插入换行符，与 SHIFT+ENTER 行为一致
+                document.execCommand('insertLineBreak');
             }
         };
         
