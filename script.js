@@ -11,9 +11,9 @@ class Node {
         this.isReverseConnection = false;
         this.isCenterNode = false; // 标识是否为中心节点
         this.style = {
-            nodeColor: '#ffffff',
+            nodeColor: '#e9e4c3',
             borderColor: '#000000',
-            borderStyle: 'solid',
+            borderStyle: 'none',
             borderWidth: 1,
             fontColor: '#000000',
             fontSize: 14,

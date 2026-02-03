@@ -36,7 +36,7 @@ body.dark-mode {
   --button-active: #5a5a5a;
   --ui-border-color: #444444;
   --divider-color: #555555;
-  --palette-bg: #333333;
+  --palette-bg: #515151;
   --palette-border: #555555;
   --thumbnail-bg: rgba(45, 45, 45, 0.9);
   --thumbnail-border: #555555;
@@ -1483,6 +1483,7 @@ body.dark-mode .theme-toggle-button .moon-icon {
     transition: all 0.2s ease;
     min-width: 80px;
     flex: 1;
+    background-color: var(--palette-bg); /* 使用与颜色选择框相同的背景色，夜间模式下为 #515151 */
 }
 
 .shape-option svg {
@@ -1496,8 +1497,8 @@ body.dark-mode .theme-toggle-button .moon-icon {
 }
 
 .shape-option.selected {
-    border-color: #007bff;
-    background-color: #e3f2fd;
+    border-color: var(--button-bg);
+    background-color: var(--bg-color);
 }
 
 /* 移动设备响应式样式 */
@@ -1543,6 +1544,7 @@ body.dark-mode .theme-toggle-button .moon-icon {
     cursor: pointer;
     transition: all 0.2s ease;
     background-color: var(--palette-bg);
+    color: #757575; /* 设置为灰色，适应日间和夜间模式 */
     min-height: 36px;
 }
 
@@ -1552,8 +1554,8 @@ body.dark-mode .theme-toggle-button .moon-icon {
 }
 
 .text-align-option.selected {
-    border-color: #007bff;
-    background-color: #e3f2fd;
+    border-color: var(--button-bg);
+    background-color: var(--bg-color);
 }
 
 .text-align-option svg {
