@@ -12,7 +12,17 @@
 <body>
     <div class="container">
 
-        
+        <!-- 主题切换开关 -->
+        <div class="theme-toggle-container">
+            <label class="theme-toggle" title="夜间模式">
+                <input type="checkbox" id="themeToggle">
+                <span class="theme-track"></span>
+                <span class="theme-knob"></span>
+                <i class="fa fa-moon-o"></i>
+                <i class="fa fa-sun-o"></i>
+            </label>
+        </div>
+
         <!-- 自定义导出弹窗 -->
         <div id="exportDialog" class="save-dialog">
             <div class="save-dialog-content">
@@ -121,6 +131,7 @@
                             <div class="font-row">
                                 <div class="font-family-group">
                                     <select id="borderStyle" title="边框样式">
+                                        <option value="none">无边框</option>
                                         <option value="solid">实线</option>
                                         <option value="dashed">虚线</option>
                                         <option value="dotted">点线</option>

@@ -5,10 +5,47 @@
     box-sizing: border-box;
 }
 
+/* 主题颜色变量（仅影响默认UI元素） */
+:root {
+  /* 白天模式（默认） */
+  --bg-color: #f5f5f5;
+  --canvas-bg: #ffffff;
+  --panel-bg: #f0f0f0;
+  --ui-text-primary: #333333;
+  --ui-text-secondary: #555555;
+  --button-bg: #444444;
+  --button-hover: #555555;
+  --button-active: #666666;
+  --ui-border-color: #dddddd;
+  --divider-color: #999999;
+  --palette-bg: #ffffff;
+  --palette-border: #dddddd;
+  --thumbnail-bg: rgba(255, 255, 255, 0.9);
+  --thumbnail-border: #cccccc;
+}
+
+/* 夜间模式 */
+body.dark-mode {
+  --bg-color: #1a1a1a;
+  --canvas-bg: #2d2d2d;
+  --panel-bg: #252525;
+  --ui-text-primary: #e0e0e0;
+  --ui-text-secondary: #b0b0b0;
+  --button-bg: #3a3a3a;
+  --button-hover: #4a4a4a;
+  --button-active: #5a5a5a;
+  --ui-border-color: #444444;
+  --divider-color: #555555;
+  --palette-bg: #333333;
+  --palette-border: #555555;
+  --thumbnail-bg: rgba(45, 45, 45, 0.9);
+  --thumbnail-border: #555555;
+}
+
 body {
     font-family: Arial, sans-serif;
-    background-color: #f5f5f5;
-    color: #333;
+    background-color: var(--bg-color);
+    color: var(--ui-text-primary);
 }
 
 /* 容器 */
@@ -33,7 +70,7 @@ body {
     gap: 8px;
     margin-bottom: 15px;
     padding: 0;
-    border-bottom: 1px solid #ddd;
+    border-bottom: 1px solid var(--ui-border-color);
     box-sizing: border-box;
     height: 36px;
 }
@@ -57,15 +94,15 @@ body {
     display: flex;
     gap: 8px;
     padding: 10px;
-    background-color: rgba(255, 255, 255, 0.95);
-    border-bottom: 1px solid #ddd;
+    background-color: var(--canvas-bg);
+    border-bottom: 1px solid var(--ui-border-color);
     position: sticky;
     top: 0;
     z-index: 10;
 }
 
 .panel-button {
-    background-color: #444;
+    background-color: var(--button-bg);
     color: white;
     border: none;
     padding: 8px 20px;
@@ -79,11 +116,11 @@ body {
 }
 
 .panel-button:hover {
-    background-color: #555;
+    background-color: var(--button-hover);
 }
 
 .panel-button:active {
-    background-color: #666;
+    background-color: var(--button-active);
 }
 
 /* 图标按钮样式 */
@@ -101,7 +138,7 @@ body {
 .canvas-container {
     flex: 1;
     overflow: auto;
-    background-color: white;
+    background-color: var(--canvas-bg);
     position: relative;
     padding: 0;
     height: 100%;
@@ -109,8 +146,8 @@ body {
 
 #mindMapCanvas {
     display: block;
-    border: 1px solid #eee;
-    background-color: white;
+    border: 1px solid var(--ui-border-color);
+    background-color: var(--canvas-bg);
 }
 
 /* 节点样式 */
@@ -189,9 +226,9 @@ body {
 .style-panel {
     width: 300px;
     max-width: 300px;
-    background-color: #f0f0f0;
+    background-color: var(--panel-bg);
     padding: 10px;
-    border-left: 1px solid #ddd;
+    border-left: 1px solid var(--ui-border-color);
     overflow-y: auto;
     /* 确保PC端保持垂直布局 */
     display: block;
@@ -208,7 +245,7 @@ body {
 
 .style-panel h3 {
     margin-bottom: 15px;
-    color: #333;
+    color: var(--ui-text-primary);
     font-size: 16px;
 }
 
@@ -220,7 +257,7 @@ body {
     display: block;
     margin-bottom: 5px;
     font-size: 14px;
-    color: #555;
+    color: var(--ui-text-secondary);
 }
 
 /* 自定义颜色选择器的颜色样例样式 */
@@ -245,9 +282,9 @@ body {
     gap: 12px;
     margin-top: 5px;
     padding: 10px;
-    background-color: white;
+    background-color: var(--palette-bg);
     border-radius: 8px;
-    border: 1px solid #ddd;
+    border: 1px solid var(--palette-border);
     align-items: center;
     justify-content: space-between;
     flex-direction: row;
@@ -301,7 +338,7 @@ body {
     width: 34px;
     height: 34px;
     border-radius: 50%;
-    border: 2px solid #ccc;
+    border: 2px solid var(--thumbnail-border);
     cursor: pointer;
     transition: all 0.2s ease;
     box-shadow: 0 2px 5px rgba(0, 0, 0, 0.15);
@@ -315,24 +352,27 @@ body {
 .custom-color-picker:hover {
     transform: scale(1.1);
     box-shadow: 0 3px 6px rgba(0, 0, 0, 0.2);
-    border-color: #aaa;
+    border-color: var(--ui-border-color);
 }
 
 .style-group input[type="number"] {
     width: 100%;
     padding: 6px;
-    border: 1px solid #ddd;
+    border: 1px solid var(--ui-border-color);
     border-radius: 4px;
     font-size: 14px;
+    background-color: var(--palette-bg);
+    color: var(--ui-text-primary);
 }
 
 .style-group select {
     width: 100%;
     padding: 6px;
-    border: 1px solid #ddd;
+    border: 1px solid var(--ui-border-color);
     border-radius: 4px;
     font-size: 14px;
-    background-color: white;
+    background-color: var(--palette-bg);
+    color: var(--ui-text-primary);
     cursor: pointer;
 }
 
@@ -402,7 +442,7 @@ body {
     text-orientation: mixed;
     font-size: 12px;
     font-weight: 500;
-    color: #555;
+    color: var(--ui-text-secondary);
     white-space: nowrap;
     flex-shrink: 0;
     width: 24px;
@@ -510,8 +550,10 @@ body {
     width: 100%;
     box-sizing: border-box;
     padding: 8px;
-    border: 1px solid #ddd;
+    border: 1px solid var(--ui-border-color);
     border-radius: 4px;
+    background-color: var(--palette-bg);
+    color: var(--ui-text-primary);
 }
 
 .style-group#fontSettings .text-align-group .text-align-options {
@@ -655,8 +697,8 @@ body {
         justify-content: center;
         padding: 8px;
         gap: 12px;
-        background-color: rgba(255, 255, 255, 0.95);
-        border-bottom: 1px solid #ddd;
+        background-color: var(--canvas-bg);
+        border-bottom: 1px solid var(--ui-border-color);
         position: sticky;
         top: 0;
         z-index: 10;
@@ -678,10 +720,10 @@ body {
         height: auto;
         max-height: none;
         border-left: none;
-        border-top: 1px solid #ddd;
+        border-top: 1px solid var(--ui-border-color);
         overflow-y: hidden;
         position: relative;
-        background-color: #f8f8f8;
+        background-color: var(--panel-bg);
         /* 手机端使用网格布局 */
         display: grid;
         grid-template-columns: 1fr 1fr;
@@ -701,9 +743,9 @@ body {
     .style-panel .style-group {
         margin-bottom: 0;
         padding: 2px 3px;
-        background-color: white;
+        background-color: var(--palette-bg);
         border-radius: 3px;
-        border: 1px solid #eee;
+        border: 1px solid var(--ui-border-color);
         min-height: auto;
         margin: 0;
         display: flex;
@@ -897,7 +939,7 @@ body {
 .divider {
     width: 100%;
     height: 1px;
-    background: linear-gradient(to right, transparent, #999, transparent);
+    background: linear-gradient(to right, transparent, var(--divider-color), transparent);
     margin: 0;
     border: none;
     opacity: 0.8;
@@ -910,9 +952,9 @@ body {
     position: absolute;
     bottom: 20px;
     left: 20px;
-    border: 1px solid #ccc;
+    border: 1px solid var(--thumbnail-border);
     border-radius: 4px;
-    background-color: rgba(255, 255, 255, 0.9);
+    background-color: var(--thumbnail-bg);
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
     cursor: pointer;
     z-index: 100;
@@ -947,7 +989,7 @@ body {
 }
 
 .save-dialog-content {
-    background-color: white;
+    background-color: var(--palette-bg);
     border-radius: 8px;
     width: 90%;
     max-width: 400px;
@@ -960,20 +1002,20 @@ body {
     justify-content: space-between;
     align-items: center;
     padding: 15px 20px;
-    border-bottom: 1px solid #eee;
+    border-bottom: 1px solid var(--ui-border-color);
 }
 
 .save-dialog-header h3 {
     margin: 0;
     font-size: 18px;
-    color: #333;
+    color: var(--ui-text-primary);
 }
 
 .close-button {
     background: none;
     border: none;
     font-size: 24px;
-    color: #999;
+    color: var(--ui-text-secondary);
     cursor: pointer;
     padding: 0;
     width: 30px;
@@ -986,8 +1028,8 @@ body {
 }
 
 .close-button:hover {
-    background-color: #f0f0f0;
-    color: #333;
+    background-color: var(--panel-bg);
+    color: var(--ui-text-primary);
 }
 
 .save-dialog-body {
@@ -1006,7 +1048,7 @@ body {
     display: block;
     margin-bottom: 5px;
     font-size: 14px;
-    color: #555;
+    color: var(--ui-text-secondary);
     font-weight: 500;
 }
 
@@ -1014,16 +1056,18 @@ body {
 .save-option input {
     width: 100%;
     padding: 10px;
-    border: 1px solid #ddd;
+    border: 1px solid var(--ui-border-color);
     border-radius: 4px;
     font-size: 14px;
     transition: border-color 0.2s ease;
+    background-color: var(--palette-bg);
+    color: var(--ui-text-primary);
 }
 
 .save-option select:focus,
 .save-option input:focus {
     outline: none;
-    border-color: #444;
+    border-color: var(--button-bg);
     box-shadow: 0 0 0 2px rgba(68, 68, 68, 0.1);
 }
 
@@ -1032,8 +1076,8 @@ body {
     justify-content: flex-end;
     gap: 10px;
     padding: 15px 20px;
-    border-top: 1px solid #eee;
-    background-color: #fafafa;
+    border-top: 1px solid var(--ui-border-color);
+    background-color: var(--panel-bg);
     border-radius: 0 0 8px 8px;
 }
 
@@ -1047,39 +1091,124 @@ body {
 }
 
 .cancel-button {
-    background-color: white;
-    border: 1px solid #ddd;
-    color: #555;
+    background-color: var(--palette-bg);
+    border: 1px solid var(--ui-border-color);
+    color: var(--ui-text-secondary);
 }
 
 .cancel-button:hover {
-    background-color: #f5f5f5;
-    border-color: #ccc;
+    background-color: var(--panel-bg);
+    border-color: var(--ui-border-color);
 }
 
 .confirm-button {
-    background-color: #444;
+    background-color: var(--button-bg);
     border: none;
     color: white;
 }
 
 .confirm-button:hover {
-    background-color: #555;
+    background-color: var(--button-hover);
 }
 
 /* 自定义颜色选择器面板样式 */
 .custom-color-picker-panel {
     display: none;
     position: absolute;
-    background-color: white;
+    background-color: var(--palette-bg);
     border-radius: 8px;
-    border: 1px solid #ddd;
+    border: 1px solid var(--ui-border-color);
     box-shadow: 0 2px 5px rgba(0, 0, 0, 0.12);
     width: 200px;
     z-index: 1001;
     font-family: Arial, sans-serif;
     padding: 10px;
     box-sizing: border-box;
+}
+
+/* 主题切换开关样式 */
+.theme-toggle-container {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    z-index: 100;
+}
+
+.theme-toggle {
+    position: relative;
+    display: inline-block;
+    width: 50px;
+    height: 28px;
+    cursor: pointer;
+}
+
+.theme-toggle input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.theme-track {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: var(--button-bg);
+    border-radius: 14px;
+    transition: .4s;
+}
+
+.theme-knob {
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background-color: white;
+    transition: .4s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+}
+
+.theme-toggle input:checked + .theme-track + .theme-knob {
+    transform: translateX(22px);
+}
+
+.theme-toggle i {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 12px;
+    color: white;
+    transition: opacity .4s;
+}
+
+.theme-toggle i.fa-sun-o {
+    left: 7px;
+}
+
+.theme-toggle i.fa-moon-o {
+    right: 7px;
+}
+
+.theme-toggle input:checked ~ i.fa-sun-o {
+    opacity: 1;
+}
+
+.theme-toggle input ~ i.fa-sun-o {
+    opacity: 0;
+}
+
+.theme-toggle input:checked ~ i.fa-moon-o {
+    opacity: 0;
+}
+
+.theme-toggle input ~ i.fa-moon-o {
+    opacity: 1;
 }
 
 .custom-color-picker-panel.active {
@@ -1173,16 +1302,18 @@ body {
 .rgb-input input {
     width: 100%;
     padding: 4px;
-    border: 1px solid #ddd;
+    border: 1px solid var(--ui-border-color);
     border-radius: 3px;
     font-size: 14px;
     text-align: center;
     margin-bottom: 2px;
+    background-color: var(--palette-bg);
+    color: var(--ui-text-primary);
 }
 
 .rgb-input label {
     font-size: 12px;
-    color: #666;
+    color: var(--ui-text-secondary);
 }
 
 /* 颜色预览和关闭按钮 */
@@ -1196,15 +1327,15 @@ body {
     width: 24px;
     height: 24px;
     border-radius: 50%;
-    border: 1px solid #ddd;
-    background-color: #ffffff;
+    border: 1px solid var(--ui-border-color);
+    background-color: var(--palette-bg);
 }
 
 .close-button {
     background: none;
     border: none;
     font-size: 20px;
-    color: #999;
+    color: var(--ui-text-secondary);
     cursor: pointer;
     padding: 0;
     width: 24px;
@@ -1217,8 +1348,8 @@ body {
 }
 
 .close-button:hover {
-    background-color: #f0f0f0;
-    color: #333;
+    background-color: var(--panel-bg);
+    color: var(--ui-text-primary);
 }
 
 /* 动画效果 */
@@ -1278,7 +1409,7 @@ body {
 }
 
 .switch input:checked + .slider {
-    background-color: #444;
+    background-color: var(--button-bg);
 }
 
 .switch input:checked + .slider:before {
@@ -1312,7 +1443,7 @@ body {
 .real-time-layout-container label {
     font-size: 14px;
     font-weight: 500;
-    color: #333;
+    color: var(--ui-text-primary);
     white-space: nowrap;
 }
 
@@ -1325,7 +1456,7 @@ body {
     display: flex;
     align-items: center;
     justify-content: center;
-    background-color: #444;
+    background-color: var(--button-bg);
     color: white;
     border: none;
     border-radius: 4px;
@@ -1334,11 +1465,11 @@ body {
 }
 
 .center-node-btn:hover {
-    background-color: #555;
+    background-color: var(--button-hover);
 }
 
 .center-node-btn:active {
-    background-color: #666;
+    background-color: var(--button-active);
 }
 
 .center-node-btn svg,
@@ -1374,7 +1505,7 @@ body {
     align-items: center;
     gap: 5px;
     padding: 8px;
-    border: 2px solid #ddd;
+    border: 2px solid var(--ui-border-color);
     border-radius: 4px;
     cursor: pointer;
     transition: all 0.2s ease;
@@ -1388,8 +1519,8 @@ body {
 }
 
 .shape-option:hover {
-    border-color: #aaa;
-    background-color: #f5f5f5;
+    border-color: var(--ui-border-color);
+    background-color: var(--panel-bg);
 }
 
 .shape-option.selected {
@@ -1420,9 +1551,9 @@ body {
     gap: 8px;
     margin-top: 5px;
     padding: 10px;
-    background-color: white;
+    background-color: var(--palette-bg);
     border-radius: 8px;
-    border: 1px solid #ddd;
+    border: 1px solid var(--ui-border-color);
     align-items: center;
     justify-content: space-between;
     width: 100%;
@@ -1435,17 +1566,17 @@ body {
     align-items: center;
     justify-content: center;
     padding: 8px;
-    border: 2px solid #ddd;
+    border: 2px solid var(--ui-border-color);
     border-radius: 4px;
     cursor: pointer;
     transition: all 0.2s ease;
-    background-color: white;
+    background-color: var(--palette-bg);
     min-height: 36px;
 }
 
 .text-align-option:hover {
-    border-color: #aaa;
-    background-color: #f5f5f5;
+    border-color: var(--ui-border-color);
+    background-color: var(--panel-bg);
 }
 
 .text-align-option.selected {
@@ -1495,7 +1626,7 @@ body {
     height: 50px;
     margin: 20px;
     border-radius: 50%;
-    background-color: #444;
+    background-color: var(--button-bg);
     color: white;
     border: none;
     cursor: pointer;
@@ -1510,7 +1641,7 @@ body {
 }
 
 .toggle-style-panel-container:hover .toggle-style-panel-btn {
-    background-color: #555;
+    background-color: var(--button-hover);
     transform: scale(1.1);
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
     opacity: 1;
