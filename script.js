@@ -146,6 +146,9 @@ class MindMap {
         this.debounceTimeout = null;
         this.debounceDelay = 300; // 防抖延迟时间（毫秒）
         
+        // 手形工具相关
+        this.isHandToolEnabled = false; // 默认关闭手形工具
+        
         // 绑定实时布局相关函数
         this.triggerRealTimeLayout = this.triggerRealTimeLayout.bind(this);
         this.debouncedLayout = this.debounce(() => {
@@ -172,6 +175,7 @@ class MindMap {
         this.initThumbnail();
         this.initMobileLayout();
         this.initRealTimeLayoutToggle();
+        this.initHandToolToggle();
         this.initShapePicker();
         
         // 初始化画布偏移量，默认不居中
@@ -1582,6 +1586,13 @@ class MindMap {
                 return;
             }
             
+            // 检查手形工具是否启用
+            if (this.isHandToolEnabled) {
+                // 手形工具启用时，不触发节点拖拽
+                e.stopPropagation();
+                return;
+            }
+            
             // 只有单击才触发拖拽
             if (!e.detail || e.detail < 2) {
                 // 检查点击目标是否是文本编辑区域
@@ -1597,6 +1608,13 @@ class MindMap {
         
         // 移动设备触摸事件 - 确保不会影响双击
         nodeGroup.addEventListener('touchstart', (e) => {
+            // 检查手形工具是否启用
+            if (this.isHandToolEnabled) {
+                // 手形工具启用时，不触发节点拖拽
+                e.stopPropagation();
+                return;
+            }
+            
             // 只有单指触摸才触发拖拽
             if (e.touches.length === 1) {
                 this.startTouchDrag(e, node);
@@ -5240,8 +5258,17 @@ class MindMap {
                 this.isPanning = false;
                 this.isSelecting = false;
                 
-                // 直接检查事件对象中的Ctrl键状态，而不是依赖keydown事件更新的变量
-                if (e.ctrlKey || e.metaKey) {
+                // 检查手形工具是否启用
+                if (this.isHandToolEnabled) {
+                    // 手形工具启用时，左键拖动画布
+                    this.isPanning = true;
+                    const coords = this.clientToSvgCoords(e.clientX, e.clientY);
+                    this.panStartX = coords.x;
+                    this.panStartY = coords.y;
+                    // 更改鼠标样式为拖动指针
+                    this.canvas.style.cursor = 'grabbing';
+                } else if (e.ctrlKey || e.metaKey) {
+                    // Ctrl键按下时，拖动画布
                     this.isPanning = true;
                     const coords = this.clientToSvgCoords(e.clientX, e.clientY);
                     this.panStartX = coords.x;
@@ -5301,7 +5328,11 @@ class MindMap {
             if (this.isPanning) {
                 this.isPanning = false;
                 // 恢复鼠标样式
-                this.canvas.style.cursor = 'default';
+                if (this.isHandToolEnabled) {
+                    this.canvas.style.cursor = 'grab';
+                } else {
+                    this.canvas.style.cursor = 'default';
+                }
             } else if (this.isSelecting) {
                 // 结束框选
                 this.stopSelection(e);
@@ -5320,7 +5351,11 @@ class MindMap {
             
             if (this.isPanning) {
                 this.isPanning = false;
-                this.canvas.style.cursor = 'default';
+                if (this.isHandToolEnabled) {
+                    this.canvas.style.cursor = 'grab';
+                } else {
+                    this.canvas.style.cursor = 'default';
+                }
             } else if (this.isSelecting) {
                 this.stopSelection();
             } else if (this.draggedNode) {
@@ -6678,6 +6713,41 @@ class MindMap {
             realTimeLayoutToggle.addEventListener('change', (e) => {
                 this.toggleRealTimeLayout(e.target.checked);
             });
+        }
+    }
+    
+    // 初始化手形工具开关
+    initHandToolToggle() {
+        const handToolToggle = document.getElementById('handToolToggle');
+        if (handToolToggle) {
+            // 设置初始状态
+            handToolToggle.setAttribute('data-enabled', this.isHandToolEnabled ? 'true' : 'false');
+            handToolToggle.style.backgroundColor = this.isHandToolEnabled ? '#444' : '#c0c0c0';
+            
+            // 添加事件监听器
+            handToolToggle.addEventListener('click', (e) => {
+                e.preventDefault();
+                const currentState = handToolToggle.getAttribute('data-enabled') === 'true';
+                const newState = !currentState;
+                this.toggleHandTool(newState);
+                handToolToggle.setAttribute('data-enabled', newState ? 'true' : 'false');
+                handToolToggle.style.backgroundColor = newState ? '#444' : '#c0c0c0';
+            });
+        }
+    }
+    
+    // 切换手形工具
+    toggleHandTool(enabled) {
+        this.isHandToolEnabled = enabled;
+        // 更新画布鼠标样式
+        if (enabled) {
+            this.canvas.style.cursor = 'grab';
+            // 添加手形工具启用类
+            document.body.classList.add('hand-tool-enabled');
+        } else {
+            this.canvas.style.cursor = 'default';
+            // 移除手形工具启用类
+            document.body.classList.remove('hand-tool-enabled');
         }
     }
     
