@@ -7876,20 +7876,15 @@ document.addEventListener('DOMContentLoaded', () => {
     // 主题切换功能
     const themeToggle = document.getElementById('themeToggle');
     
-    // 加载保存的主题偏好
-    const savedTheme = localStorage.getItem('theme');
-    if (savedTheme === 'dark') {
-        document.body.classList.add('dark-mode');
-    }
+    // 默认设置为白天模式，不保存主题偏好
+    document.body.classList.remove('dark-mode');
     
     // 主题切换事件监听器
     themeToggle.addEventListener('click', function() {
         if (document.body.classList.contains('dark-mode')) {
             document.body.classList.remove('dark-mode');
-            localStorage.setItem('theme', 'light');
         } else {
             document.body.classList.add('dark-mode');
-            localStorage.setItem('theme', 'dark');
         }
         // 主题切换时更新缩略图画布，确保导航窗颜色立即更新
         mindMap.renderThumbnail();
