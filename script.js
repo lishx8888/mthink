@@ -139,6 +139,8 @@ class MindMap {
         this.stopDrag = this.stopDrag.bind(this);
         this.touchDrag = this.touchDrag.bind(this);
         this.stopTouchDrag = this.stopTouchDrag.bind(this);
+        this.touchSelectionMove = this.touchSelectionMove.bind(this);
+        this.stopTouchSelection = this.stopTouchSelection.bind(this);
         this.resizeCanvas = this.resizeCanvas.bind(this);
         
         // 实时自动布局相关
@@ -1469,6 +1471,13 @@ class MindMap {
                 this.addParentNode(node);
             });
             
+            // 左侧触摸事件（支持触摸屏设备）
+            leftClickArea.addEventListener('touchstart', (e) => {
+                e.stopPropagation();
+                e.preventDefault(); // 阻止默认行为，避免触发click事件
+                this.addParentNode(node);
+            });
+            
             // 左侧悬停效果
             leftClickArea.addEventListener('mouseenter', () => {
                 leftClickArea.setAttribute('fill', 'rgba(0, 0, 0, 0.5)'); // 所有节点形状都使用相同的深色效果，确保鼠标悬停时会明显加深
@@ -1515,6 +1524,13 @@ class MindMap {
         if (rightClickArea) {
             rightClickArea.addEventListener('click', (e) => {
                 e.stopPropagation();
+                this.addChildNode(node);
+            });
+            
+            // 右侧触摸事件（支持触摸屏设备）
+            rightClickArea.addEventListener('touchstart', (e) => {
+                e.stopPropagation();
+                e.preventDefault(); // 阻止默认行为，避免触发click事件
                 this.addChildNode(node);
             });
             
@@ -2460,6 +2476,137 @@ class MindMap {
         document.removeEventListener('touchcancel', this.stopTouchDrag);
         
         // 重新渲染
+        this.render();
+    }
+    
+    // 触摸移动时的框选处理
+    touchSelectionMove(e) {
+        // 如果处于编辑模式，不执行框选
+        if (this.isEditingNode) {
+            return;
+        }
+        
+        if (!this.isSelecting || !this.selectionRect) return;
+        
+        // 使用触摸点坐标
+        const touch = e.touches[0];
+        const rect = this.canvas.getBoundingClientRect();
+        this.selectionEndX = touch.clientX - rect.left;
+        this.selectionEndY = touch.clientY - rect.top;
+        
+        // 计算框选矩形的坐标，支持所有方向
+        const x1 = Math.min(this.selectionStartX, this.selectionEndX);
+        const y1 = Math.min(this.selectionStartY, this.selectionEndY);
+        const x2 = Math.max(this.selectionStartX, this.selectionEndX);
+        const y2 = Math.max(this.selectionStartY, this.selectionEndY);
+        
+        const width = x2 - x1;
+        const height = y2 - y1;
+        
+        // 更新框选矩形
+        this.selectionRect.setAttribute('x', x1);
+        this.selectionRect.setAttribute('y', y1);
+        this.selectionRect.setAttribute('width', width);
+        this.selectionRect.setAttribute('height', height);
+        
+        // 碰撞检测：检查节点是否与框选区域相交
+        const intersectingNodes = [];
+        
+        this.nodes.forEach(node => {
+            // 计算节点的世界坐标边界
+            const nodeLeft = node.x - node.width / 2;
+            const nodeRight = node.x + node.width / 2;
+            const nodeTop = node.y - node.height / 2;
+            const nodeBottom = node.y + node.height / 2;
+            
+            // 计算框选区域的世界坐标边界（减去画布平移）
+            const selectionWorldLeft = x1 - this.canvasOffsetX;
+            const selectionWorldRight = x2 - this.canvasOffsetX;
+            const selectionWorldTop = y1 - this.canvasOffsetY;
+            const selectionWorldBottom = y2 - this.canvasOffsetY;
+            
+            // 宽松的碰撞检测：只要节点与框选区域有任何重叠就选中
+            if (nodeLeft < selectionWorldRight && nodeRight > selectionWorldLeft && nodeTop < selectionWorldBottom && nodeBottom > selectionWorldTop) {
+                intersectingNodes.push(node);
+            }
+        });
+        
+        // 更新选中状态
+        this.selectedNodes = intersectingNodes;
+        this.selectedNode = intersectingNodes.length > 0 ? intersectingNodes[0] : null;
+        
+        // 重新渲染显示选中效果
+        this.render();
+        
+        // 阻止默认行为
+        e.preventDefault();
+    }
+    
+    // 触摸结束时的框选处理
+    stopTouchSelection(e) {
+        // 如果处于编辑模式，不执行任何操作
+        if (this.isEditingNode) {
+            // 清理事件监听器以避免内存泄漏
+            document.removeEventListener('touchmove', this.touchSelectionMove);
+            document.removeEventListener('touchend', this.stopTouchSelection);
+            document.removeEventListener('touchcancel', this.stopTouchSelection);
+            // 重置框选状态
+            this.isSelecting = false;
+            this.selectionRect = null;
+            return;
+        }
+        
+        // 移除框选矩形
+        if (this.selectionRect && this.canvas.contains(this.selectionRect)) {
+            this.canvas.removeChild(this.selectionRect);
+        }
+        
+        // 重新计算选中的节点，确保与视觉反馈完全一致
+        // 计算框选矩形的坐标，支持所有方向
+        const x1 = Math.min(this.selectionStartX, this.selectionEndX);
+        const y1 = Math.min(this.selectionStartY, this.selectionEndY);
+        const x2 = Math.max(this.selectionStartX, this.selectionEndX);
+        const y2 = Math.max(this.selectionStartY, this.selectionEndY);
+        
+        // 碰撞检测：检查节点是否与框选区域相交
+        const intersectingNodes = [];
+        
+        this.nodes.forEach(node => {
+            // 计算节点的世界坐标边界
+            const nodeLeft = node.x - node.width / 2;
+            const nodeRight = node.x + node.width / 2;
+            const nodeTop = node.y - node.height / 2;
+            const nodeBottom = node.y + node.height / 2;
+            
+            // 计算框选区域的世界坐标边界（减去画布平移）
+            const selectionWorldLeft = x1 - this.canvasOffsetX;
+            const selectionWorldRight = x2 - this.canvasOffsetX;
+            const selectionWorldTop = y1 - this.canvasOffsetY;
+            const selectionWorldBottom = y2 - this.canvasOffsetY;
+            
+            // 宽松的碰撞检测：只要节点与框选区域有任何重叠就选中
+            if (nodeLeft < selectionWorldRight && nodeRight > selectionWorldLeft && nodeTop < selectionWorldBottom && nodeBottom > selectionWorldTop) {
+                intersectingNodes.push(node);
+            }
+        });
+        
+        // 更新选中状态
+        this.selectedNodes = intersectingNodes;
+        this.selectedNode = intersectingNodes.length > 0 ? intersectingNodes[0] : null;
+        
+        // 重置框选状态
+        this.isSelecting = false;
+        this.selectionRect = null;
+        
+        // 移除事件监听器
+        document.removeEventListener('touchmove', this.touchSelectionMove);
+        document.removeEventListener('touchend', this.stopTouchSelection);
+        document.removeEventListener('touchcancel', this.stopTouchSelection);
+        
+        // 设置标志，防止click事件立即取消选择
+        this.justFinishedSelection = true;
+        
+        // 重新渲染画布以确保选中状态正确显示
         this.render();
     }
     
@@ -5618,8 +5765,66 @@ class MindMap {
         // 触摸事件处理（移动设备）
         // 触摸开始事件
         this.canvas.addEventListener('touchstart', (e) => {
-            // 如果有两个手指触摸，开始两指拖动
-            if (e.touches.length === 2) {
+            // 检查是否是刚完成框选操作
+            if (this.justFinishedSelection) {
+                this.justFinishedSelection = false;
+                return;
+            }
+            
+            // 检查是否点击的是空白区域（取消选择）
+            if (e.touches.length === 1) {
+                const touch = e.touches[0];
+                const target = document.elementFromPoint(touch.clientX, touch.clientY);
+                
+                // 如果点击的是画布本身（空白区域）
+                if (target === this.canvas || target.closest('#canvas')) {
+                    // 取消选择
+                    this.selectedNode = null;
+                    this.selectedNodes = [];
+                    this.updateStylePanel();
+                    this.render();
+                }
+            }
+            
+            // 检查手形工具是否启用
+            if (this.isHandToolEnabled && e.touches.length === 1) {
+                // 手形工具启用时，单指触摸开始拖动画布
+                this.isPanning = true;
+                const touch = e.touches[0];
+                const coords = this.clientToSvgCoords(touch.clientX, touch.clientY);
+                this.panStartX = coords.x;
+                this.panStartY = coords.y;
+                // 阻止默认行为
+                e.preventDefault();
+            } else if (e.touches.length === 1 && !this.isEditingNode) {
+                // 单指触摸开始框选（手形工具未启用且不在编辑模式）
+                this.isSelecting = true;
+                const touch = e.touches[0];
+                const rect = this.canvas.getBoundingClientRect();
+                this.selectionStartX = touch.clientX - rect.left;
+                this.selectionStartY = touch.clientY - rect.top;
+                this.selectionEndX = this.selectionStartX;
+                this.selectionEndY = this.selectionStartY;
+                
+                // 创建框选矩形
+                this.selectionRect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+                this.selectionRect.setAttribute('fill', 'rgba(0, 120, 215, 0.1)');
+                this.selectionRect.setAttribute('stroke', 'rgba(0, 120, 215, 0.7)');
+                this.selectionRect.setAttribute('stroke-width', '1');
+                this.selectionRect.setAttribute('x', this.selectionStartX);
+                this.selectionRect.setAttribute('y', this.selectionStartY);
+                this.selectionRect.setAttribute('width', 0);
+                this.selectionRect.setAttribute('height', 0);
+                this.canvas.appendChild(this.selectionRect);
+                
+                // 添加触摸移动和结束事件监听器
+                document.addEventListener('touchmove', this.touchSelectionMove, { passive: false });
+                document.addEventListener('touchend', this.stopTouchSelection, { passive: false });
+                
+                // 阻止默认行为
+                e.preventDefault();
+            } else if (e.touches.length === 2) {
+                // 两指触摸开始拖动
                 this.isPanning = true;
                 // 计算两指中心点
                 const touch1 = e.touches[0];
@@ -5638,8 +5843,28 @@ class MindMap {
         
         // 触摸移动事件
         this.canvas.addEventListener('touchmove', (e) => {
-            // 如果正在进行两指拖动
-            if (this.isPanning && e.touches.length === 2) {
+            // 手形工具启用时的单指拖动
+            if (this.isPanning && this.isHandToolEnabled && e.touches.length === 1) {
+                const touch = e.touches[0];
+                const coords = this.clientToSvgCoords(touch.clientX, touch.clientY);
+                // 计算拖动距离
+                const deltaX = coords.x - this.panStartX;
+                const deltaY = coords.y - this.panStartY;
+                
+                // 更新画布偏移量
+                this.canvasOffsetX += deltaX;
+                this.canvasOffsetY += deltaY;
+                
+                // 更新拖动起点
+                this.panStartX = coords.x;
+                this.panStartY = coords.y;
+                
+                // 重新渲染画布
+                this.render();
+                
+                // 阻止默认行为
+                e.preventDefault();
+            } else if (this.isPanning && e.touches.length === 2) {
                 // 计算两指中心点
                 const touch1 = e.touches[0];
                 const touch2 = e.touches[1];
@@ -5669,8 +5894,11 @@ class MindMap {
         
         // 触摸结束事件
         this.canvas.addEventListener('touchend', (e) => {
-            // 如果触摸点少于2个，结束拖动
-            if (this.isPanning && e.touches.length < 2) {
+            // 手形工具启用时的单指拖动结束
+            if (this.isPanning && this.isHandToolEnabled && e.touches.length === 0) {
+                this.isPanning = false;
+            } else if (this.isPanning && e.touches.length < 2) {
+                // 两指拖动结束
                 this.isPanning = false;
             }
         });
