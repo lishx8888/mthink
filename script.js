@@ -106,6 +106,7 @@ class MindMap {
         this.panStartX = 0;
         this.panStartY = 0;
         this.isCtrlPressed = false;
+        this.isShiftPressed = false;
         
         // 编辑状态跟踪
         this.isEditingNode = false;
@@ -1643,8 +1644,21 @@ class MindMap {
                 return;
             }
             
-            // 只有单指触摸才触发拖拽
+            // 只有单指触摸才处理
             if (e.touches.length === 1) {
+                // 先处理选择功能
+                // 检查是否按住Ctrl或Shift键（支持键盘修饰符）
+                // 对于触摸屏设备，也可以通过isCtrlPressed和isShiftPressed属性检查
+                const modifiedEvent = {
+                    ctrlKey: e.ctrlKey || this.isCtrlPressed,
+                    metaKey: e.metaKey,
+                    shiftKey: e.shiftKey || this.isShiftPressed
+                };
+                
+                // 调用selectNode处理选择
+                this.selectNode(node, modifiedEvent);
+                
+                // 然后开始拖拽
                 this.startTouchDrag(e, node);
             }
         });
@@ -5633,8 +5647,9 @@ class MindMap {
         
         // 键盘事件监听器 - Delete键删除选中节点，Ctrl+C/Ctrl+V复制粘贴
         document.addEventListener('keydown', (e) => {
-            // 更新Ctrl键状态
+            // 更新Ctrl键和Shift键状态
             this.isCtrlPressed = e.ctrlKey || e.metaKey;
+            this.isShiftPressed = e.shiftKey;
             
             // 只有Delete键能删除节点，Backspace键不能删除节点，防止误删
             if (e.key === 'Delete') {
@@ -5755,10 +5770,12 @@ class MindMap {
             }
         });
         
-        // 监听Ctrl键释放事件
+        // 监听键盘按键释放事件
         document.addEventListener('keyup', (e) => {
             if (e.key === 'Control' || e.key === 'Meta') {
                 this.isCtrlPressed = false;
+            } else if (e.key === 'Shift') {
+                this.isShiftPressed = false;
             }
         });
         
