@@ -4445,6 +4445,7 @@ class MindMap {
                         }
                     }
                     
+                    this.saveState();
                     this.render();
                     
 
@@ -6610,7 +6611,12 @@ class MindMap {
         const existingNumbers = sortedParents
             .map(parent => {
                 if (parent.nodeNumber && parent.nodeNumber.startsWith('-')) {
-                    return parseInt(parent.nodeNumber);
+                    // 提取子节点编号中父编号后的部分
+                    const childNumber = parentNode.nodeNumber;
+                    const prefix = childNumber + ".";
+                    // 提取父节点编号中子编号后的部分
+                    const suffix = parent.nodeNumber.startsWith(prefix) ? parent.nodeNumber.substring(prefix.length) : parent.nodeNumber;
+                    return parseInt(suffix) || 0;
                 }
                 return null;
             })
@@ -6625,7 +6631,12 @@ class MindMap {
         sortedParents.forEach(parent => {
             if (!parent.nodeNumber) {
                 // 只为没有编号的节点生成反向编号
-                parent.nodeNumber = `${nextNumber--}`;
+                const childNumber = parentNode.nodeNumber;
+                if (childNumber === "0" || childNumber === "") {
+                    parent.nodeNumber = `${nextNumber--}`;
+                } else {
+                    parent.nodeNumber = `${childNumber}.${nextNumber--}`;
+                }
                 
                 // 递归处理父节点
                 this.generateReverseNodeNumbers(parent);
