@@ -1635,18 +1635,67 @@ class MindMap {
             }
         });
         
-        // 移动设备触摸事件 - 确保不会影响双击
+        // 移动设备触摸事件 - 支持长按进入编辑模式
+        let longPressTimer = null;
+        
         nodeGroup.addEventListener('touchstart', (e) => {
-            // 检查手形工具是否启用
-            if (this.isHandToolEnabled) {
-                // 手形工具启用时，不触发节点拖拽
-                e.stopPropagation();
-                return;
-            }
-            
             // 只有单指触摸才处理
             if (e.touches.length === 1) {
-                // 先处理选择功能
+                // 清除之前的定时器
+                if (longPressTimer) {
+                    clearTimeout(longPressTimer);
+                }
+                
+                // 开始长按定时器
+                longPressTimer = setTimeout(() => {
+                    // 长按事件
+                    e.stopPropagation();
+                    e.preventDefault();
+                    
+                    // 如果已经在编辑模式下，先退出当前编辑模式
+                    if (this.isEditingNode && this.currentEditingNode) {
+                        const currentNode = this.currentEditingNode;
+                        const currentNodeGroup = document.getElementById(`node-${currentNode.id}`);
+                        if (currentNodeGroup) {
+                            // 获取当前编辑的文本输入框
+                            const editableDiv = currentNodeGroup.querySelector('.edit-foreign-object div[contenteditable="true"]');
+                            
+                            // 保存当前编辑的文本
+                            if (editableDiv) {
+                                const newText = editableDiv.textContent.trim();
+                                this.updateNodeText(currentNode, newText);
+                            }
+                            
+                            // 隐藏当前编辑的foreignObject
+                            const currentEditFo = currentNodeGroup.querySelector('.edit-foreign-object');
+                            if (currentEditFo) {
+                                currentEditFo.remove();
+                            }
+                            
+                            // 显示原始文本
+                            const originalForeignObjects = currentNodeGroup.querySelectorAll('foreignObject.node-text-foreign-object');
+                            originalForeignObjects.forEach(fo => {
+                                fo.style.display = '';
+                            });
+                        }
+                        
+                        // 重置编辑状态
+                        this.isEditingNode = false;
+                        this.currentEditingNode = null;
+                    }
+                    
+                    // 进入新节点的编辑模式
+                    this.editNodeText(node);
+                }, 800); // 800毫秒长按
+                
+                // 检查手形工具是否启用
+                if (this.isHandToolEnabled) {
+                    // 手形工具启用时，不触发节点拖拽
+                    e.stopPropagation();
+                    return;
+                }
+                
+                // 手形工具未启用时，处理选择功能
                 // 检查是否按住Ctrl或Shift键（支持键盘修饰符）
                 // 对于触摸屏设备，也可以通过isCtrlPressed和isShiftPressed属性检查
                 const modifiedEvent = {
@@ -1660,6 +1709,30 @@ class MindMap {
                 
                 // 然后开始拖拽
                 this.startTouchDrag(e, node);
+            }
+        });
+        
+        // 触摸移动事件 - 取消长按定时器
+        nodeGroup.addEventListener('touchmove', (e) => {
+            if (longPressTimer) {
+                clearTimeout(longPressTimer);
+                longPressTimer = null;
+            }
+        });
+        
+        // 触摸结束事件 - 取消长按定时器
+        nodeGroup.addEventListener('touchend', (e) => {
+            if (longPressTimer) {
+                clearTimeout(longPressTimer);
+                longPressTimer = null;
+            }
+        });
+        
+        // 触摸取消事件 - 取消长按定时器
+        nodeGroup.addEventListener('touchcancel', (e) => {
+            if (longPressTimer) {
+                clearTimeout(longPressTimer);
+                longPressTimer = null;
             }
         });
             
@@ -3169,7 +3242,8 @@ class MindMap {
             editableDiv.removeEventListener('input', autoResize);
             
             // 移除全局事件监听器
-            document.removeEventListener('mousedown', handleGlobalMouseDown);
+            document.removeEventListener('mousedown', handleGlobalClick);
+            document.removeEventListener('touchstart', handleGlobalClick);
             
             // 移除所有阻止冒泡的事件监听器
             eventsToPrevent.forEach(event => {
@@ -3192,7 +3266,8 @@ class MindMap {
                 editableDiv.removeEventListener('input', autoResize);
                 
                 // 移除全局事件监听器
-                document.removeEventListener('mousedown', handleGlobalMouseDown);
+                document.removeEventListener('mousedown', handleGlobalClick);
+                document.removeEventListener('touchstart', handleGlobalClick);
                 
                 // 移除所有阻止冒泡的事件监听器
                 eventsToPrevent.forEach(event => {
@@ -3365,9 +3440,9 @@ class MindMap {
             }
         };
         
-        // 全局鼠标按下事件处理程序
-        // 只在鼠标按下时检查是否点击了节点框外的区域
-        const handleGlobalMouseDown = (e) => {
+        // 全局点击事件处理程序
+        // 只在点击时检查是否点击了节点框外的区域
+        const handleGlobalClick = (e) => {
             // 检查点击目标是否在editableDiv内部
             if (e.target === editableDiv || editableDiv.contains(e.target)) {
                 // 如果点击的是editableDiv内部，不做任何操作
@@ -3410,9 +3485,10 @@ class MindMap {
         // 初始调用autoResize，确保节点高度在编辑开始时正确调整
         autoResize();
         
-        // 添加全局鼠标按下事件监听器
-        // 使用mousedown而不是click，避免与文本选择冲突
-        document.addEventListener('mousedown', handleGlobalMouseDown);
+        // 添加全局点击事件监听器
+        // 使用mousedown和touchstart，确保在鼠标和触屏设备上都能正常工作
+        document.addEventListener('mousedown', handleGlobalClick);
+        document.addEventListener('touchstart', handleGlobalClick);
         
         // 添加编辑元素到节点组
         nodeGroup.appendChild(textInput);
@@ -4902,6 +4978,18 @@ class MindMap {
             loadMapBtn.addEventListener('click', () => this.loadMap());
         }
         
+        // 撤销按钮事件
+        const undoBtn = document.getElementById('undoBtn');
+        if (undoBtn) {
+            undoBtn.addEventListener('click', () => this.undo());
+        }
+        
+        // 重做按钮事件
+        const redoBtn = document.getElementById('redoBtn');
+        if (redoBtn) {
+            redoBtn.addEventListener('click', () => this.redo());
+        }
+        
         // 自动布局按钮事件
         const autoLayoutBtn = document.getElementById('autoLayout');
         if (autoLayoutBtn) {
@@ -4912,6 +5000,16 @@ class MindMap {
         const centerNodeBtn = document.getElementById('centerNode');
         if (centerNodeBtn) {
             centerNodeBtn.addEventListener('click', () => this.centerOnRootNode());
+        }
+        
+        // 删除节点按钮事件
+        const deleteNodeBtn = document.getElementById('deleteNode');
+        if (deleteNodeBtn) {
+            deleteNodeBtn.addEventListener('click', () => {
+                if (this.selectedNode) {
+                    this.deleteNode(this.selectedNode);
+                }
+            });
         }
         
         // 自定义导出弹窗事件
