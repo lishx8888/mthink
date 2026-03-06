@@ -6560,7 +6560,12 @@ class MindMap {
         const existingNumbers = sortedChildren
             .map(child => {
                 if (child.nodeNumber && !child.nodeNumber.startsWith('-')) {
-                    return parseInt(child.nodeNumber);
+                    // 提取父编号前缀（带分隔符）
+                    const parentNumber = parentNode.nodeNumber;
+                    const prefix = parentNumber + ".";
+                    // 提取子节点编号中父编号后的部分
+                    const suffix = child.nodeNumber.startsWith(prefix) ? child.nodeNumber.substring(prefix.length) : child.nodeNumber;
+                    return parseInt(suffix) || 0;
                 }
                 return null;
             })
@@ -6575,7 +6580,12 @@ class MindMap {
         sortedChildren.forEach(child => {
             if (!child.nodeNumber) {
                 // 只为没有编号的节点生成正向编号
-                child.nodeNumber = `${nextNumber++}`;
+                const parentNumber = parentNode.nodeNumber;
+                if (parentNumber === "0" || parentNumber === "") {
+                    child.nodeNumber = `${nextNumber++}`;
+                } else {
+                    child.nodeNumber = `${parentNumber}.${nextNumber++}`;
+                }
                 
                 // 递归处理子节点
                 this.generateForwardNodeNumbers(child);
