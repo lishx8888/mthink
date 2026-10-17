@@ -115,6 +115,13 @@ class MindMap {
         // 连接线和箭头的统一颜色
         this.connectionColor = '#b3b875ff'; // 默认颜色 R:183 G:106 B:85
         
+        // 同级配色开关：开启时背景色按“深浅颜色对”在同级节点间交替，关闭时仅改当前节点
+        try {
+            this.siblingColorPairingEnabled = localStorage.getItem('mindmap_sibling_color_pairing') !== 'false';
+        } catch (e) {
+            this.siblingColorPairingEnabled = true;
+        }
+        
         // 缩略图相关属性
         this.thumbnailCanvas = document.getElementById('thumbnailCanvas');
         this.thumbnailScale = 0.1; // 固定缩放比例
@@ -180,6 +187,7 @@ class MindMap {
         this.initRealTimeLayoutToggle();
         this.initHandToolToggle();
         this.initShapePicker();
+        this.initSiblingColorToggle();
         
         // 初始化画布偏移量，默认不居中
         this.canvasOffsetX = 0;
@@ -3570,6 +3578,86 @@ class MindMap {
         this.render();
     }
     
+    // ===== 同级配色（按深浅颜色对交替上色） =====
+    
+    // 初始化同级配色开关：同步UI状态并绑定事件
+    initSiblingColorToggle() {
+        const toggle = document.getElementById('siblingColorToggle');
+        if (!toggle) return;
+        
+        const self = this;
+        toggle.checked = this.siblingColorPairingEnabled;
+        toggle.addEventListener('change', function() {
+            self.siblingColorPairingEnabled = toggle.checked;
+            try {
+                localStorage.setItem('mindmap_sibling_color_pairing', toggle.checked ? 'true' : 'false');
+            } catch (e) { /* localStorage不可用时忽略 */ }
+        });
+    }
+    
+    // 获取同级节点集合（同一父节点下的兄弟节点，包含节点自身）
+    // 多父节点时取第一个父节点的children；无父节点（中心节点）时返回其自身
+    getSiblings(node) {
+        if (!node) return [];
+        if (!node.parents || node.parents.length === 0) {
+            return [node];
+        }
+        const parentNode = node.parents[0];
+        return (parentNode && parentNode.children) ? parentNode.children.slice() : [node];
+    }
+    
+    // 颜色对映射表：调色板中每列上下两格为一对（浅色, 深色）
+    static get COLOR_PAIR_TABLE() {
+        return [
+            ['#ffffff', '#c0bebe'],
+            ['#e6f3ff', '#99bbff'],
+            ['#e6ffe6', '#99cc99'],
+            ['#ffffe6', '#ffff99'],
+            ['#fff0e6', '#ffcc99'],
+            ['#f0e6ff', '#cc99ff']
+        ];
+    }
+    
+    // 根据用户选择的颜色得到交替上色的颜色对 {a: 浅色, b: 深色}
+    // 命中调色板颜色对时使用该对；自定义颜色则派生一个加深版本作为b
+    getColorPair(baseHex) {
+        const hex = (baseHex || '#ffffff').toLowerCase();
+        const table = MindMap.COLOR_PAIR_TABLE;
+        for (let i = 0; i < table.length; i++) {
+            if (table[i][0] === hex) return { a: table[i][0], b: table[i][1] };
+            if (table[i][1] === hex) return { a: table[i][0], b: table[i][1] };
+        }
+        // 自定义颜色：原色为a，按0.75加深派生b
+        const match = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+        if (!match) return { a: hex, b: hex };
+        const toHex = v => Math.max(0, Math.round(v * 0.75)).toString(16).padStart(2, '0');
+        const dark = '#' + toHex(parseInt(match[1], 16)) + toHex(parseInt(match[2], 16)) + toHex(parseInt(match[3], 16));
+        return { a: hex, b: dark };
+    }
+    
+    // 为node所在同级组按颜色对交替上色：排序后 A/B/A/B ...
+    applySiblingPairColors(node, baseHex) {
+        const siblings = this.getSiblings(node);
+        // 同级只有自己：等同于只改自己
+        if (siblings.length <= 1) {
+            node.updateStyle({ nodeColor: baseHex });
+            return;
+        }
+        
+        const pair = this.getColorPair(baseHex);
+        // 按编号排序（数值比较，无法解析则按y坐标），保证交替顺序稳定
+        const sorted = siblings.slice().sort((x, y) => {
+            const nx = parseFloat(x.nodeNumber);
+            const ny = parseFloat(y.nodeNumber);
+            if (!isNaN(nx) && !isNaN(ny) && nx !== ny) return nx - ny;
+            return (x.y || 0) - (y.y || 0);
+        });
+        
+        sorted.forEach((sibling, index) => {
+            sibling.updateStyle({ nodeColor: index % 2 === 0 ? pair.a : pair.b });
+        });
+    }
+    
     updateStylePanel() {
         if (this.selectedNodes.length === 0) {
             // 禁用样式面板
@@ -3653,13 +3741,18 @@ class MindMap {
         });
         
         // 为所有选中的节点应用样式，只更新用户实际修改的属性
+        const useSiblingPair = this.siblingColorPairingEnabled && updatedProperties.includes('nodeColor');
         this.selectedNodes.forEach(node => {
             // 创建一个新的样式对象，包含节点原来的所有样式属性
             const updatedStyle = { ...node.style };
             
             // 只更新指定的属性
-            if (updatedProperties.includes('nodeColor') && stylePanelValues.nodeColor !== node.style.nodeColor) {
-                updatedStyle.nodeColor = stylePanelValues.nodeColor;
+            if (updatedProperties.includes('nodeColor')) {
+                if (useSiblingPair) {
+                    // 同级配色开启：按颜色对为同级节点交替上色，此处在下方统一处理
+                } else if (stylePanelValues.nodeColor !== node.style.nodeColor) {
+                    updatedStyle.nodeColor = stylePanelValues.nodeColor;
+                }
             }
             if (updatedProperties.includes('borderColor') && stylePanelValues.borderColor !== node.style.borderColor) {
                 updatedStyle.borderColor = stylePanelValues.borderColor;
@@ -3688,6 +3781,13 @@ class MindMap {
             
             node.updateStyle(updatedStyle);
         });
+        
+        // 同级配色开启：为每个选中节点的同级组按颜色对交替上色
+        if (useSiblingPair) {
+            this.selectedNodes.forEach(node => {
+                this.applySiblingPairColors(node, stylePanelValues.nodeColor);
+            });
+        }
         
         // 重新计算节点尺寸
         this.calculateNodeSizes();
