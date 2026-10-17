@@ -3595,15 +3595,84 @@ class MindMap {
         });
     }
     
-    // 获取同级节点集合（同一父节点下的兄弟节点，包含节点自身）
-    // 多父节点时取第一个父节点的children；无父节点（中心节点）时返回其自身
+    // 获取中心节点（isCenterNode标记），找不到时回退rootNode
+    getCenterNode() {
+        const center = this.nodes.find(n => n.isCenterNode);
+        return center || this.rootNode;
+    }
+    
+    // 判断节点是否为中心节点左侧（反向）节点
+    // 左侧节点在结构上位于中心节点的parents链上（左侧节点是中心节点的父节点）
+    isLeftSideNode(node) {
+        const center = this.getCenterNode();
+        if (!center || node === center) return false;
+        // 沿中心节点的parents链向上查找，包含node则为左侧节点
+        const stack = center.parents ? center.parents.slice() : [];
+        const visited = new Set();
+        while (stack.length > 0) {
+            const current = stack.pop();
+            if (current === node) return true;
+            if (visited.has(current)) continue;
+            visited.add(current);
+            if (current.parents && current.parents.length > 0) {
+                stack.push(...current.parents);
+            }
+        }
+        return false;
+    }
+    
+    // 获取节点层级：中心节点为0级，向左右两侧每延伸一层加1
+    // 主要依据编号段数判断："1"/"-1"为1级，"1.1"/"-1.1"为2级，以此类推
+    // 编号缺失时回退：从中心节点沿children/parents边广度优先计算距离
+    getNodeLevel(node) {
+        if (!node) return 0;
+        if (node.isCenterNode || node === this.getCenterNode()) return 0;
+        const num = node.nodeNumber;
+        if (num && num !== '0' && !isNaN(parseFloat(num))) {
+            return num.split('.').filter(s => s !== '').length;
+        }
+        // 编号缺失的兜底计算
+        const center = this.getCenterNode();
+        if (!center) return 1;
+        const visited = new Set([center]);
+        let frontier = [center];
+        for (let depth = 1; depth <= 20 && frontier.length > 0; depth++) {
+            const next = [];
+            for (const current of frontier) {
+                const neighbors = [...(current.children || []), ...(current.parents || [])];
+                for (const neighbor of neighbors) {
+                    if (visited.has(neighbor)) continue;
+                    if (neighbor === node) return depth;
+                    visited.add(neighbor);
+                    next.push(neighbor);
+                }
+            }
+            frontier = next;
+        }
+        return 1;
+    }
+    
+    // 获取节点方向：'left'（左侧）| 'right'（右侧）| 'center'（中心节点）
+    // 优先按编号首段符号判断（负数为左侧，如-1、-1.1）；编号缺失时按结构关系回退
+    getNodeSide(node) {
+        if (!node) return 'center';
+        if (node.isCenterNode || node === this.getCenterNode()) return 'center';
+        const num = node.nodeNumber;
+        if (num && num !== '0' && !isNaN(parseFloat(num))) {
+            return parseFloat(num) < 0 ? 'left' : 'right';
+        }
+        // 编号缺失时沿中心节点parents链判断（左侧节点是中心节点的父节点）
+        return this.isLeftSideNode(node) ? 'left' : 'right';
+    }
+    
+    // 获取同级节点集合：同层级且同方向的所有节点（含自身）
+    // 例：左侧二级节点-1.1、-1.2、-2.1、-2.2属于同一同级组
     getSiblings(node) {
         if (!node) return [];
-        if (!node.parents || node.parents.length === 0) {
-            return [node];
-        }
-        const parentNode = node.parents[0];
-        return (parentNode && parentNode.children) ? parentNode.children.slice() : [node];
+        const level = this.getNodeLevel(node);
+        if (level === 0) return [node]; // 中心节点无同级
+        const side = this.getNodeSide(node);
+        return this.nodes.filter(n => this.getNodeLevel(n) === level && this.getNodeSide(n) === side);
     }
     
     // 颜色对映射表：调色板中每列上下两格为一对（浅色, 深色）
@@ -3645,11 +3714,15 @@ class MindMap {
         }
         
         const pair = this.getColorPair(baseHex);
-        // 按编号排序（数值比较，无法解析则按y坐标），保证交替顺序稳定
+        // 左侧节点编号为负（-1、-2…自上而下），降序排列让最上方先拿A色；
+        // 右侧节点编号为正（1、2…自上而下），升序排列；无法解析编号时按y坐标排序
+        const isLeft = this.getNodeSide(node) === 'left';
         const sorted = siblings.slice().sort((x, y) => {
             const nx = parseFloat(x.nodeNumber);
             const ny = parseFloat(y.nodeNumber);
-            if (!isNaN(nx) && !isNaN(ny) && nx !== ny) return nx - ny;
+            if (!isNaN(nx) && !isNaN(ny) && nx !== ny) {
+                return isLeft ? ny - nx : nx - ny;
+            }
             return (x.y || 0) - (y.y || 0);
         });
         
